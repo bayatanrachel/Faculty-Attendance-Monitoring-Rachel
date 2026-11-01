@@ -31,8 +31,31 @@ export default function Home() {
           <p className="welcome-label">WELCOME BACK</p>
           <h1>Faculty Login</h1>
           <p className="subtitle">
-            Welcome, Sherilyn Tobias. Sign in to access your dashboard.
+            Sign in to access your faculty attendance dashboard.
           </p>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "13px",
+            padding: "14px",
+            marginBottom: "25px",
+            border: "1px solid #293e55",
+            borderRadius: "13px",
+            background: "#0d1a2b"
+          }}
+        >
+          <div className="faculty-avatar">ST</div>
+          <div>
+            <strong style={{ display: "block", color: "#e8eff6", fontSize: "14px" }}>
+              Sherilyn Tobias
+            </strong>
+            <span style={{ display: "block", color: "#9aacc0", fontSize: "11px", marginTop: "4px" }}>
+              Registered Faculty Member
+            </span>
+          </div>
         </div>
 
         <form className="login-form" onSubmit={handleLogin}>
