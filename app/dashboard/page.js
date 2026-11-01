@@ -1,9 +1,10 @@
 
+
 const attendanceStats = [
-  { label: "Present", value: "0", color: "present" },
-  { label: "Late", value: "0", color: "late" },
-  { label: "Absent", value: "0", color: "absent" },
-  { label: "Excused", value: "0", color: "excused" },
+  { label: "Present", value: "0", color: "present", note: "On-time attendance" },
+  { label: "Late", value: "0", color: "late", note: "Late attendance" },
+  { label: "Absent", value: "0", color: "absent", note: "No attendance record" },
+  { label: "Excused", value: "0", color: "excused", note: "Excused records" },
 ];
 
 export default function Dashboard() {
@@ -13,6 +14,14 @@ export default function Dashboard() {
         <div className="sidebar-brand">
           <div className="logo-icon">QR</div>
           <span>FACULTY<br />ATTENDANCE</span>
+        </div>
+
+        <div className="faculty-profile">
+          <div className="faculty-avatar">ST</div>
+          <div className="faculty-profile-copy">
+            <strong>Sherilyn Tobias</strong>
+            <span>Faculty Member</span>
+          </div>
         </div>
 
         <nav className="sidebar-nav">
@@ -30,7 +39,7 @@ export default function Dashboard() {
             <p className="welcome-label">FACULTY PORTAL</p>
             <h1>Welcome, Sherilyn Tobias!</h1>
             <p className="dashboard-subtitle">
-              Here's an overview of your attendance records.
+              Here is your faculty attendance overview.
             </p>
           </div>
           <div className="faculty-avatar">ST</div>
@@ -48,7 +57,7 @@ export default function Dashboard() {
                 <div className={`stat-indicator ${stat.color}`} />
                 <p>{stat.label}</p>
                 <h3>{stat.value}</h3>
-                <span>Total records</span>
+                <span>{stat.note}</span>
               </article>
             ))}
           </div>
@@ -68,7 +77,10 @@ export default function Dashboard() {
           <div className="empty-records">
             <div className="empty-icon">QR</div>
             <h3>No attendance records yet</h3>
-            <p>Your attendance records will appear here once available.</p>
+            <p>
+              Your attendance records will appear here once the database
+              connection is completed.
+            </p>
           </div>
         </section>
 
@@ -79,4 +91,3 @@ export default function Dashboard() {
     </main>
   );
 }
-
