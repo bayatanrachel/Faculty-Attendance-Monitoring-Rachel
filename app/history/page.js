@@ -80,7 +80,11 @@ export default function AttendanceHistory() {
                     <td>{record.facultyName}</td>
                     <td>{record.date}</td>
                     <td>{record.time}</td>
-                    <td>{getStatus(record.status)}</td>
+                    <td>
+  <span className={`status-badge status-${record.status.toLowerCase()}`}>
+    {getStatus(record.status)}
+  </span>
+</td>
                   </tr>
                 ))}
               </tbody>
