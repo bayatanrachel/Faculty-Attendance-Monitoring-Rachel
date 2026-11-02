@@ -1,47 +1,28 @@
 
-export const dynamic = "force-dynamic";
+                  export const dynamic = "force-dynamic";
 
-async function getAttendanceRecords() {
-  const apiUrl = process.env.ATTENDANCE_API_URL;
-  const apiKey = process.env.ATTENDANCE_API_KEY;
+const records = [
+  { id: "9bd18ea9", facultyName: "Sherilyn Tobias", date: "10/30/26", time: "01:00", status: "P" },
+  { id: "AE1024", facultyName: "Sherilyn Tobias", date: "10/30/26", time: "01:09", status: "P" },
+  { id: "AE1025", facultyName: "Sherilyn Tobias", date: "10/30/26", time: "01:12", status: "P" },
+  { id: "AE1023", facultyName: "Sherilyn Tobias", date: "10/30/26", time: "01:14", status: "P" },
+  { id: "AE1022", facultyName: "Sherilyn Tobias", date: "10/30/26", time: "01:24", status: "L" },
+  { id: "c347fa3d", facultyName: "Sherilyn Tobias", date: "10/30/26", time: "01:33", status: "L" },
+  { id: "91d7b9ec", facultyName: "Sherilyn Tobias", date: "10/30/26", time: "01:40", status: "L" },
+  { id: "dedf5c69", facultyName: "Sherilyn Tobias", date: "10/30/26", time: "02:00", status: "A" },
+  { id: "8430687e-f808-43ee-b0d0-c3dd9e2aaae1", facultyName: "Sherilyn Tobias", date: "11/01/26", time: "01:00", status: "P" },
+  { id: "8f15d145-10bf-4862-9d42-f98bccdd85f7", facultyName: "Sherilyn Tobias", date: "11/02/26", time: "01:13", status: "P" },
+];
 
-  if (!apiUrl || !apiKey) {
-    console.error("Attendance API check:", {
-      hasUrl: Boolean(apiUrl),
-      hasKey: Boolean(apiKey),
-    });
-    return [];
-  }
-
-  try {
-    const url = new URL(apiUrl);
-    url.searchParams.set("action", "records");
-    url.searchParams.set("key", apiKey);
-
-    const response = await fetch(url.toString(), {
-      cache: "no-store",
-    });
-
-    if (!response.ok) {
-      throw new Error(`API request failed: ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    if (data.error) {
-      throw new Error(data.error);
-    }
-
-    return Array.isArray(data.records) ? data.records : [];
-  } catch (error) {
-    console.error("Failed to load attendance records:", error);
-    return [];
-  }
+function getStatus(status) {
+  if (status === "P") return "Present";
+  if (status === "L") return "Late";
+  if (status === "A") return "Absent";
+  if (status === "E") return "Excused";
+  return status;
 }
 
-export default async function AttendanceHistory() {
-  const records = await getAttendanceRecords();
-
+export default function AttendanceHistory() {
   return (
     <main className="dashboard-page">
       <aside className="sidebar">
@@ -93,33 +74,15 @@ export default async function AttendanceHistory() {
                 </tr>
               </thead>
               <tbody>
-                {records.length > 0 ? (
-                  records.map((record) => (
-                    <tr key={record.id}>
-                      <td>{record.id}</td>
-                      <td>{record.facultyName}</td>
-                      <td>{record.date}</td>
-                      <td>{record.time}</td>
-                      <td>
-                        {record.status === "P"
-                          ? "Present"
-                          : record.status === "L"
-                          ? "Late"
-                          : record.status === "A"
-                          ? "Absent"
-                          : record.status === "E"
-                          ? "Excused"
-                          : record.status}
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="5" className="history-empty">
-                      No attendance records available yet.
-                    </td>
+                {records.map((record) => (
+                  <tr key={record.id}>
+                    <td>{record.id}</td>
+                    <td>{record.facultyName}</td>
+                    <td>{record.date}</td>
+                    <td>{record.time}</td>
+                    <td>{getStatus(record.status)}</td>
                   </tr>
-                )}
+                ))}
               </tbody>
             </table>
           </div>
@@ -128,4 +91,3 @@ export default async function AttendanceHistory() {
     </main>
   );
 }
-
