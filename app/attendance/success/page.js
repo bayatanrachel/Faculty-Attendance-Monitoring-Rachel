@@ -1,9 +1,11 @@
 
+
 "use client";
 
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
-export default function AttendanceSuccess() {
+function AttendanceSuccessContent() {
   const params = useSearchParams();
 
   const faculty = params.get("faculty") || "Sherilyn Tobias";
@@ -52,7 +54,13 @@ export default function AttendanceSuccess() {
 
           <div className="flex justify-between gap-4 text-sm">
             <span className="text-[#aab8ce]">Status</span>
-            <strong className={status === "PRESENT" ? "text-[#55e6a5]" : "text-amber-400"}>
+            <strong
+              className={
+                status === "PRESENT"
+                  ? "text-[#55e6a5]"
+                  : "text-amber-400"
+              }
+            >
               {status}
             </strong>
           </div>
@@ -66,3 +74,16 @@ export default function AttendanceSuccess() {
   );
 }
 
+export default function AttendanceSuccess() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-[#0b1224] flex items-center justify-center text-white">
+          Loading attendance details...
+        </main>
+      }
+    >
+      <AttendanceSuccessContent />
+    </Suspense>
+  );
+}
