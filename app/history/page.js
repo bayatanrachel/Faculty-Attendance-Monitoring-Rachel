@@ -6,12 +6,11 @@ async function getAttendanceRecords() {
   const apiKey = process.env.ATTENDANCE_API_KEY;
 
   if (!apiUrl || !apiKey) {
-  console.error("Attendance API check:", {
-    hasUrl: Boolean(apiUrl),
-    hasKey: Boolean(apiKey),
-  });
-  return [];
-  }
+    console.error("Attendance API check:", {
+      hasUrl: Boolean(apiUrl),
+      hasKey: Boolean(apiKey),
+    });
+    return [];
   }
 
   try {
