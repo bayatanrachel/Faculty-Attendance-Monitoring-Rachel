@@ -1,7 +1,44 @@
 
-const records = [];
+export const dynamic = "force-dynamic";
 
-export default function AttendanceHistory() {
+async function getAttendanceRecords() {
+  const apiUrl = process.env.ATTENDANCE_API_URL;
+  const apiKey = process.env.ATTENDANCE_API_KEY;
+
+  if (!apiUrl || !apiKey) {
+    console.error("Attendance API environment variables are missing.");
+    return [];
+  }
+
+  try {
+    const url = new URL(apiUrl);
+    url.searchParams.set("action", "records");
+    url.searchParams.set("key", apiKey);
+
+    const response = await fetch(url.toString(), {
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (data.error) {
+      throw new Error(data.error);
+    }
+
+    return Array.isArray(data.records) ? data.records : [];
+  } catch (error) {
+    console.error("Failed to load attendance records:", error);
+    return [];
+  }
+}
+
+export default async function AttendanceHistory() {
+  const records = await getAttendanceRecords();
+
   return (
     <main className="dashboard-page">
       <aside className="sidebar">
@@ -46,6 +83,7 @@ export default function AttendanceHistory() {
               <thead>
                 <tr>
                   <th>Record ID</th>
+                  <th>Faculty Name</th>
                   <th>Date</th>
                   <th>Time</th>
                   <th>Status</th>
@@ -56,14 +94,25 @@ export default function AttendanceHistory() {
                   records.map((record) => (
                     <tr key={record.id}>
                       <td>{record.id}</td>
+                      <td>{record.facultyName}</td>
                       <td>{record.date}</td>
                       <td>{record.time}</td>
-                      <td>{record.status}</td>
+                      <td>
+                        {record.status === "P"
+                          ? "Present"
+                          : record.status === "L"
+                          ? "Late"
+                          : record.status === "A"
+                          ? "Absent"
+                          : record.status === "E"
+                          ? "Excused"
+                          : record.status}
+                      </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="4" className="history-empty">
+                    <td colSpan="5" className="history-empty">
                       No attendance records available yet.
                     </td>
                   </tr>
