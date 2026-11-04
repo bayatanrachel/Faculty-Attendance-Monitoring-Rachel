@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 const KEY = "faculty-attendance-records";
 
-// Backend schedule validation only. Hindi ito ipinapakita sa page.
+// Internal schedule validation only. Not displayed on the page.
 const SCHEDULES = Array.from({ length: 17 }, (_, i) => {
   const hour = i + 7;
   return `${String(hour).padStart(2, "0")}:00`;
@@ -135,7 +135,7 @@ export default function ScanPage() {
   const [records, setRecords] = useState([]);
   const [cameraOn, setCameraOn] = useState(false);
   const [message, setMessage] = useState(
-    "Pindutin ang Start Camera para mag-scan."
+    "Select Start Camera to begin scanning."
   );
   const [error, setError] = useState("");
   const [manualQR, setManualQR] = useState("");
@@ -173,7 +173,7 @@ export default function ScanPage() {
 
     if (!qr) {
       setError(
-        "Invalid QR. Kailangan ang facultyName, facultyId, at valid classStart schedule."
+        "Invalid QR data. Required fields: facultyName, facultyId, and a valid classStart schedule."
       );
       return;
     }
@@ -189,7 +189,7 @@ export default function ScanPage() {
     );
 
     if (now < classStart) {
-      setError("Hindi pa nagsisimula ang scheduled class.");
+      setError("The scheduled class has not started yet.");
       return;
     }
 
@@ -210,7 +210,7 @@ export default function ScanPage() {
 
     if (duplicate) {
       setError(
-        "May existing attendance record na para sa schedule na ito."
+        "An attendance record already exists for this schedule."
       );
       return;
     }
@@ -239,7 +239,7 @@ export default function ScanPage() {
       setMessage("Attendance successfully recorded!");
       setError("");
     } catch (saveError) {
-      setError("Hindi ma-save ang attendance record.");
+      setError("Unable to save the attendance record.");
       console.error(saveError);
     } finally {
       busyRef.current = false;
@@ -250,11 +250,11 @@ export default function ScanPage() {
 
   async function startCamera() {
     setError("");
-    setMessage("Humihingi ng camera permission...");
+    setMessage("Requesting camera permission...");
 
     if (!navigator.mediaDevices?.getUserMedia) {
       setError(
-        "Hindi available ang camera access. Gumamit ng updated browser at HTTPS."
+        "Camera access is unavailable. Use an updated browser over HTTPS."
       );
       return;
     }
@@ -262,7 +262,7 @@ export default function ScanPage() {
     let stream;
 
     try {
-      // Humingi muna ng camera permission.
+      // Request camera access first.
       stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: { ideal: "environment" },
@@ -272,14 +272,14 @@ export default function ScanPage() {
 
       streamRef.current = stream;
 
-      // I-check ang QR detector pagkatapos ma-grant ang camera.
+      // Check QR detection support after camera permission.
       if (!("BarcodeDetector" in window)) {
         stream.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
 
         setMessage("Camera permission granted.");
         setError(
-          "Hindi supported ng browser na ito ang built-in QR detection. Subukan ang updated Google Chrome."
+          "This browser does not support built-in QR detection. Update Google Chrome or use a supported browser."
         );
         return;
       }
@@ -288,19 +288,26 @@ export default function ScanPage() {
         formats: ["qr_code"],
       });
 
+      // Mount the video element before accessing its ref.
+      setCameraOn(true);
+
+      await new Promise((resolve) =>
+        requestAnimationFrame(resolve)
+      );
+
       const video = videoRef.current;
 
       if (!video) {
-        throw new Error("Hindi makita ang camera preview.");
+        throw new Error("Camera preview element is unavailable.");
       }
 
       video.srcObject = stream;
       await video.play();
 
       scanningRef.current = true;
-      setCameraOn(true);
+
       setMessage(
-        "Camera active. Itapat ang faculty QR code sa camera."
+        "Camera is active. Align the faculty QR code within the frame."
       );
 
       async function scanFrame() {
@@ -333,13 +340,13 @@ export default function ScanPage() {
 
       setError(
         cameraError.name === "NotAllowedError"
-          ? "Camera permission denied. Payagan ang Camera access sa browser site settings."
+          ? "Camera permission was denied. Allow camera access in your browser site settings."
           : cameraError.name === "NotFoundError"
-          ? "Walang camera na nakita sa device."
+          ? "No camera was found on this device."
           : `Camera error: ${cameraError.message || cameraError.name}`
       );
 
-      setMessage("Hindi nabuksan ang camera.");
+      setMessage("Unable to start the camera.");
     }
   }
 
@@ -426,15 +433,19 @@ export default function ScanPage() {
             </span>
           </div>
 
-          {cameraOn ? (
-            <video
-              ref={videoRef}
-              autoPlay
-              muted
-              playsInline
-              style={styles.video}
-            />
-          ) : (
+          {/* Keep the video element mounted at all times. */}
+          <video
+            ref={videoRef}
+            autoPlay
+            muted
+            playsInline
+            style={{
+              ...styles.video,
+              display: cameraOn ? "block" : "none",
+            }}
+          />
+
+          {!cameraOn && (
             <div
               style={{
                 ...styles.video,
