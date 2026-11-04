@@ -1,35 +1,68 @@
+"use client";
 
+import { useEffect, useState } from "react";
 
-const records = [
-  { id: "9bd18ea9", status: "P" },
-  { id: "AE1024", status: "P" },
-  { id: "AE1025", status: "P" },
-  { id: "AE1023", status: "P" },
-  { id: "AE1022", status: "L" },
-  { id: "c347fa3d", status: "L" },
-  { id: "91d7b9ec", status: "L" },
-  { id: "dedf5c69", status: "A" },
-  { id: "8430687e-f808-43ee-b0d0-c3dd9e2aaae1", status: "P" },
-  { id: "8f15d145-10bf-4862-9d42-f98bccdd85f7", status: "P" },
+const STORAGE_KEY = "faculty-attendance-records";
+
+const summaryItems = [
+  { label: "Present", color: "present", barColor: "#6dd6c4" },
+  { label: "Late", color: "late", barColor: "#e8bd78" },
+  { label: "Absent", color: "absent", barColor: "#e18b91" },
+  { label: "Excused", color: "excused", barColor: "#aa9cdb" },
 ];
 
-const total = records.length;
-
-const summary = [
-  { label: "Present", code: "P", color: "present" },
-  { label: "Late", code: "L", color: "late" },
-  { label: "Absent", code: "A", color: "absent" },
-  { label: "Excused", code: "E", color: "excused" },
-].map((item) => {
-  const count = records.filter((record) => record.status === item.code).length;
-  return {
-    ...item,
-    count,
-    percentage: total ? Math.round((count / total) * 100) : 0,
-  };
-});
+const statusLabels = {
+  P: "Present",
+  L: "Late",
+  A: "Absent",
+  E: "Excused",
+  Present: "Present",
+  Late: "Late",
+  Absent: "Absent",
+  Excused: "Excused",
+};
 
 export default function AttendanceSummary() {
+  const [records, setRecords] = useState([]);
+
+  useEffect(() => {
+    function loadRecords() {
+      try {
+        const saved = JSON.parse(
+          localStorage.getItem(STORAGE_KEY) || "[]"
+        );
+        setRecords(Array.isArray(saved) ? saved : []);
+      } catch {
+        setRecords([]);
+      }
+    }
+
+    loadRecords();
+    window.addEventListener("storage", loadRecords);
+    window.addEventListener("focus", loadRecords);
+
+    return () => {
+      window.removeEventListener("storage", loadRecords);
+      window.removeEventListener("focus", loadRecords);
+    };
+  }, []);
+
+  const total = records.length;
+
+  const summary = summaryItems.map((item) => {
+    const count = records.filter(
+      (record) => statusLabels[record.status] === item.label
+    ).length;
+
+    return {
+      ...item,
+      count,
+      percentage: total
+        ? Math.round((count / total) * 100)
+        : 0,
+    };
+  });
+
   return (
     <main className="dashboard-page">
       <aside className="sidebar">
@@ -42,6 +75,7 @@ export default function AttendanceSummary() {
           <a className="nav-link" href="/dashboard">Dashboard</a>
           <a className="nav-link" href="/history">Attendance History</a>
           <a className="nav-link active" href="/summary">Attendance Summary</a>
+          <a className="nav-link" href="/scan">QR Scanner</a>
         </nav>
 
         <a className="logout-link" href="/">Log Out</a>
@@ -92,14 +126,16 @@ export default function AttendanceSummary() {
 
             <div style={{ marginTop: "22px", display: "grid", gap: "22px" }}>
               {summary.map((item) => (
-                <div key={item.code}>
+                <div key={item.label}>
                   <div style={{
                     display: "flex",
                     justifyContent: "space-between",
                     gap: "12px",
                     marginBottom: "9px"
                   }}>
-                    <strong style={{ fontSize: "13px" }}>{item.label}</strong>
+                    <strong style={{ fontSize: "13px" }}>
+                      {item.label}
+                    </strong>
                     <span style={{ color: "#aebed0", fontSize: "12px" }}>
                       {item.count} records · {item.percentage}%
                     </span>
@@ -115,10 +151,7 @@ export default function AttendanceSummary() {
                       width: `${item.percentage}%`,
                       height: "100%",
                       borderRadius: "20px",
-                      background:
-                        item.color === "present" ? "#6dd6c4" :
-                        item.color === "late" ? "#e8bd78" :
-                        item.color === "absent" ? "#e18b91" : "#aa9cdb"
+                      background: item.barColor
                     }} />
                   </div>
                 </div>
@@ -134,3 +167,6 @@ export default function AttendanceSummary() {
     </main>
   );
 }
+
+
+            
