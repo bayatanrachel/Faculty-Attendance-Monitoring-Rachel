@@ -3,15 +3,104 @@
 
 import { useEffect, useRef, useState } from "react";
 
-const STORAGE_KEY = "faculty-attendance-records";
+const KEY = "faculty-attendance-records";
 
-const SCHEDULES = Array.from({ length: 17 }, (_, i) =>
-  `${String(i + 7).padStart(2, "0")}:00`
-);
+// Backend schedule validation only. Hindi ito ipinapakita sa page.
+const SCHEDULES = Array.from({ length: 17 }, (_, i) => {
+  const hour = i + 7;
+  return `${String(hour).padStart(2, "0")}:00`;
+});
+
+const styles = {
+  page: {
+    minHeight: "100vh",
+    background: "#091321",
+    color: "#edf4ff",
+    padding: "28px 18px 40px",
+    fontFamily: "Arial, Helvetica, sans-serif",
+  },
+  container: {
+    width: "100%",
+    maxWidth: "950px",
+    margin: "0 auto",
+  },
+  link: {
+    color: "#83cfff",
+    textDecoration: "none",
+    fontSize: "14px",
+    fontWeight: "600",
+  },
+  eyebrow: {
+    color: "#70bfff",
+    fontSize: "11px",
+    fontWeight: "700",
+    letterSpacing: "2px",
+    textTransform: "uppercase",
+    marginTop: "25px",
+  },
+  heading: {
+    fontSize: "30px",
+    lineHeight: 1.2,
+    margin: "8px 0",
+    color: "#f3f7fc",
+  },
+  muted: {
+    color: "#9aacc0",
+    lineHeight: 1.65,
+    fontSize: "14px",
+  },
+  panel: {
+    background: "linear-gradient(145deg, #172b43, #112137)",
+    border: "1px solid #2b4059",
+    borderRadius: "16px",
+    padding: "22px",
+    marginTop: "22px",
+    boxShadow: "0 14px 34px rgba(0,0,0,.18)",
+  },
+  button: {
+    background: "linear-gradient(100deg, #2678db, #3195df)",
+    color: "#fff",
+    border: "1px solid #4b9ce5",
+    borderRadius: "10px",
+    padding: "13px 20px",
+    fontSize: "14px",
+    fontWeight: "700",
+    cursor: "pointer",
+  },
+  video: {
+    display: "block",
+    width: "100%",
+    maxWidth: "430px",
+    aspectRatio: "1 / 1",
+    objectFit: "cover",
+    borderRadius: "14px",
+    background: "#050b13",
+    border: "2px solid #398fe0",
+    margin: "20px auto 0",
+  },
+  input: {
+    display: "block",
+    width: "100%",
+    padding: "13px",
+    borderRadius: "9px",
+    border: "1px solid #405671",
+    background: "#0b192a",
+    color: "#fff",
+    marginTop: "10px",
+    fontSize: "14px",
+    outline: "none",
+    resize: "vertical",
+  },
+  sectionTitle: {
+    fontSize: "20px",
+    marginBottom: "8px",
+    color: "#f1f6fc",
+  },
+};
 
 function getRecords() {
   try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    const saved = JSON.parse(localStorage.getItem(KEY) || "[]");
     return Array.isArray(saved) ? saved : [];
   } catch {
     return [];
@@ -39,8 +128,8 @@ function parseQR(raw) {
 export default function ScanPage() {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
-  const scanningRef = useRef(false);
   const frameRef = useRef(null);
+  const scanningRef = useRef(false);
   const busyRef = useRef(false);
 
   const [records, setRecords] = useState([]);
@@ -58,7 +147,6 @@ export default function ScanPage() {
 
   function stopCamera() {
     scanningRef.current = false;
-    busyRef.current = false;
 
     if (frameRef.current) {
       cancelAnimationFrame(frameRef.current);
@@ -78,7 +166,7 @@ export default function ScanPage() {
     setCameraOn(false);
   }
 
-  function saveAttendance(raw) {
+  function saveRecord(raw) {
     if (busyRef.current) return;
 
     const qr = parseQR(raw);
@@ -96,7 +184,9 @@ export default function ScanPage() {
     const classStart = new Date(now);
     classStart.setHours(hour, minute, 0, 0);
 
-    const cutoff = new Date(classStart.getTime() + 15 * 60 * 1000);
+    const cutoff = new Date(
+      classStart.getTime() + 15 * 60 * 1000
+    );
 
     if (now < classStart) {
       setError("Hindi pa nagsisimula ang scheduled class.");
@@ -119,7 +209,9 @@ export default function ScanPage() {
     );
 
     if (duplicate) {
-      setError("May existing attendance record na para sa schedule na ito.");
+      setError(
+        "May existing attendance record na para sa schedule na ito."
+      );
       return;
     }
 
@@ -127,7 +219,7 @@ export default function ScanPage() {
 
     const record = {
       recordId: crypto.randomUUID().slice(0, 8),
-      facultyName: qr.facultyName,
+      facultyName: String(qr.facultyName).trim(),
       facultyId: qr.facultyId,
       date,
       time: now.toLocaleTimeString("en-US", {
@@ -141,7 +233,7 @@ export default function ScanPage() {
     const updated = [record, ...saved];
 
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      localStorage.setItem(KEY, JSON.stringify(updated));
       setRecords(updated);
       setLastRecord(record);
       setMessage("Attendance successfully recorded!");
@@ -149,63 +241,81 @@ export default function ScanPage() {
     } catch (saveError) {
       setError("Hindi ma-save ang attendance record.");
       console.error(saveError);
+    } finally {
+      busyRef.current = false;
     }
 
-    busyRef.current = false;
     stopCamera();
   }
 
   async function startCamera() {
     setError("");
-    setMessage("Opening camera...");
+    setMessage("Humihingi ng camera permission...");
 
     if (!navigator.mediaDevices?.getUserMedia) {
-      setError("Camera access is unavailable. Use an updated browser over HTTPS.");
+      setError(
+        "Hindi available ang camera access. Gumamit ng updated browser at HTTPS."
+      );
       return;
     }
 
-    if (!("BarcodeDetector" in window)) {
-      setError("QR scanning is not supported by this browser. Try an updated Chrome.");
-      return;
-    }
+    let stream;
 
     try {
-      const detector = new window.BarcodeDetector({
-        formats: ["qr_code"],
+      // Humingi muna ng camera permission.
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: "environment" },
+        },
+        audio: false,
       });
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: "environment" } },
-        audio: false,
+      streamRef.current = stream;
+
+      // I-check ang QR detector pagkatapos ma-grant ang camera.
+      if (!("BarcodeDetector" in window)) {
+        stream.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+
+        setMessage("Camera permission granted.");
+        setError(
+          "Hindi supported ng browser na ito ang built-in QR detection. Subukan ang updated Google Chrome."
+        );
+        return;
+      }
+
+      const detector = new window.BarcodeDetector({
+        formats: ["qr_code"],
       });
 
       const video = videoRef.current;
 
       if (!video) {
-        stream.getTracks().forEach((track) => track.stop());
-        throw new Error("Video element not found.");
+        throw new Error("Hindi makita ang camera preview.");
       }
-
-      streamRef.current = stream;
-      scanningRef.current = true;
 
       video.srcObject = stream;
       await video.play();
 
+      scanningRef.current = true;
       setCameraOn(true);
-      setMessage("Camera active. Point it at the faculty QR code.");
+      setMessage(
+        "Camera active. Itapat ang faculty QR code sa camera."
+      );
 
       async function scanFrame() {
-        if (!scanningRef.current || !streamRef.current) return;
+        if (!scanningRef.current || !streamRef.current) {
+          return;
+        }
 
         try {
           const codes = await detector.detect(video);
 
           if (codes.length > 0 && codes[0].rawValue) {
-            saveAttendance(codes[0].rawValue);
+            saveRecord(codes[0].rawValue);
           }
         } catch (scanError) {
-          console.error("SCAN ERROR:", scanError);
+          console.error("QR SCAN ERROR:", scanError);
         }
 
         if (scanningRef.current && streamRef.current) {
@@ -216,15 +326,35 @@ export default function ScanPage() {
       frameRef.current = requestAnimationFrame(scanFrame);
     } catch (cameraError) {
       console.error("CAMERA ERROR:", cameraError);
-      setError(`${cameraError.name}: ${cameraError.message}`);
-      stopCamera();
+
+      stream?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+      setCameraOn(false);
+
+      setError(
+        cameraError.name === "NotAllowedError"
+          ? "Camera permission denied. Payagan ang Camera access sa browser site settings."
+          : cameraError.name === "NotFoundError"
+          ? "Walang camera na nakita sa device."
+          : `Camera error: ${cameraError.message || cameraError.name}`
+      );
+
+      setMessage("Hindi nabuksan ang camera.");
     }
   }
 
   useEffect(() => {
     loadRecords();
 
+    const refresh = () => loadRecords();
+
+    window.addEventListener("storage", refresh);
+    window.addEventListener("focus", refresh);
+
     return () => {
+      window.removeEventListener("storage", refresh);
+      window.removeEventListener("focus", refresh);
+
       scanningRef.current = false;
 
       if (frameRef.current) {
@@ -236,217 +366,380 @@ export default function ScanPage() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-[#071426] px-4 py-8 text-white sm:px-6">
-      <div className="mx-auto max-w-5xl">
+    <main style={styles.page}>
+      <div style={styles.container}>
+        <a href="/dashboard" style={styles.link}>
+          ← Back to Dashboard
+        </a>
 
-        <header className="mb-8">
-          <a
-            href="/dashboard"
-            className="text-sm font-medium text-blue-300 transition hover:text-white"
-          >
-            ← Back to Dashboard
-          </a>
+        <header>
+          <p style={styles.eyebrow}>
+            Faculty Attendance System
+          </p>
 
-          <div className="mt-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-400">
-              Faculty Attendance System
-            </p>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight md:text-4xl">
-              QR Code Scanner
-            </h1>
-            <p className="mt-2 text-sm text-slate-400">
-              Scan the faculty QR code to record classroom attendance.
-            </p>
-          </div>
+          <h1 style={styles.heading}>
+            QR Code Scanner
+          </h1>
+
+          <p style={styles.muted}>
+            Scan the faculty QR code to record classroom attendance.
+          </p>
         </header>
 
-        <section className="overflow-hidden rounded-2xl border border-slate-700 bg-[#10223a] shadow-xl shadow-black/20">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700 px-5 py-5 sm:px-6">
+        {/* CAMERA SCANNER */}
+        <section style={styles.panel}>
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: "12px",
+            }}
+          >
             <div>
-              <h2 className="text-xl font-bold">Camera Scanner</h2>
-              <p className="mt-1 text-sm text-slate-400">
+              <h2 style={styles.sectionTitle}>
+                Camera Scanner
+              </h2>
+
+              <p style={styles.muted}>
                 Align the QR code inside the square.
               </p>
             </div>
 
             <span
-              className={`rounded-full px-4 py-2 text-xs font-semibold ${
-                cameraOn
-                  ? "bg-emerald-500/10 text-emerald-400"
-                  : "bg-slate-700/60 text-slate-300"
-              }`}
+              style={{
+                padding: "7px 12px",
+                borderRadius: "30px",
+                fontSize: "12px",
+                fontWeight: 700,
+                color: cameraOn ? "#6ee7b7" : "#cbd5e1",
+                background: cameraOn
+                  ? "rgba(16,185,129,.12)"
+                  : "rgba(148,163,184,.12)",
+                border: cameraOn
+                  ? "1px solid rgba(16,185,129,.3)"
+                  : "1px solid #40516a",
+              }}
             >
-              {cameraOn ? "● Camera Active" : "● Camera Inactive"}
+              ● Camera {cameraOn ? "Active" : "Inactive"}
             </span>
           </div>
 
-          <div className="px-5 py-7 sm:px-6">
-            <div className="relative mx-auto aspect-square w-full max-w-[260px] overflow-hidden rounded-2xl border-2 border-blue-500 bg-black shadow-lg shadow-blue-500/10">
-              <video
-                ref={videoRef}
-                autoPlay
-                muted
-                playsInline
-                className={`h-full w-full object-cover ${
-                  cameraOn ? "block" : "hidden"
-                }`}
-              />
-
-              {!cameraOn && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-gradient-to-br from-[#0b1d33] to-[#071426]">
-                  <span className="text-5xl text-blue-300">▦</span>
-                  <p className="text-sm font-medium text-slate-300">
-                    Camera Preview
-                  </p>
+          {cameraOn ? (
+            <video
+              ref={videoRef}
+              autoPlay
+              muted
+              playsInline
+              style={styles.video}
+            />
+          ) : (
+            <div
+              style={{
+                ...styles.video,
+                display: "grid",
+                placeItems: "center",
+                background:
+                  "linear-gradient(145deg, #0d2036, #071426)",
+                color: "#9aacc0",
+              }}
+            >
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: "20px",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: "48px",
+                    color: "#83cfff",
+                  }}
+                >
+                  ▦
                 </div>
-              )}
 
-              {cameraOn && (
-                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                  <div className="relative h-40 w-40 rounded-xl border-2 border-blue-400 shadow-[0_0_20px_rgba(59,130,246,0.4)]">
-                    <span className="absolute -left-1 -top-1 h-5 w-5 border-l-4 border-t-4 border-blue-400" />
-                    <span className="absolute -right-1 -top-1 h-5 w-5 border-r-4 border-t-4 border-blue-400" />
-                    <span className="absolute -bottom-1 -left-1 h-5 w-5 border-b-4 border-l-4 border-blue-400" />
-                    <span className="absolute -bottom-1 -right-1 h-5 w-5 border-b-4 border-r-4 border-blue-400" />
-                  </div>
-                </div>
-              )}
+                <p
+                  style={{
+                    fontSize: "14px",
+                    fontWeight: 600,
+                  }}
+                >
+                  Camera Preview
+                </p>
+              </div>
             </div>
+          )}
 
-            <p className="mt-4 text-center text-sm text-slate-400">
-              Keep the faculty QR code within the scanning area.
+          <p
+            style={{
+              ...styles.muted,
+              textAlign: "center",
+              marginTop: "14px",
+            }}
+          >
+            Keep the faculty QR code within the scanning area.
+          </p>
+
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              marginTop: "20px",
+            }}
+          >
+            {!cameraOn ? (
+              <button
+                onClick={startCamera}
+                style={styles.button}
+              >
+                Start Camera
+              </button>
+            ) : (
+              <button
+                onClick={stopCamera}
+                style={{
+                  ...styles.button,
+                  background: "#a43d4a",
+                  borderColor: "#c45a66",
+                }}
+              >
+                Stop Camera
+              </button>
+            )}
+          </div>
+
+          <div
+            style={{
+              marginTop: "18px",
+              padding: "14px",
+              borderRadius: "10px",
+              background: "#0b192a",
+              border: "1px solid #304761",
+              textAlign: "center",
+            }}
+          >
+            <p
+              style={{
+                color: "#c8d7e8",
+                fontSize: "14px",
+              }}
+            >
+              {message}
             </p>
 
-            <div className="mt-6 flex flex-wrap justify-center gap-3">
-              {!cameraOn ? (
-                <button
-                  onClick={startCamera}
-                  className="rounded-xl bg-blue-600 px-7 py-3 text-sm font-semibold shadow-lg shadow-blue-900/30 transition hover:bg-blue-500"
-                >
-                  Start Camera
-                </button>
-              ) : (
-                <button
-                  onClick={stopCamera}
-                  className="rounded-xl bg-red-600 px-7 py-3 text-sm font-semibold transition hover:bg-red-500"
-                >
-                  Stop Camera
-                </button>
-              )}
-            </div>
-
-            <div className="mt-5 rounded-xl border border-slate-700 bg-[#0b192a] p-4 text-center">
-              <p className="text-sm text-slate-200">{message}</p>
-
-              {error && (
-                <p className="mt-3 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-300">
-                  {error}
-                </p>
-              )}
-            </div>
+            {error && (
+              <p
+                style={{
+                  color: "#ff929c",
+                  fontSize: "13px",
+                  marginTop: "9px",
+                }}
+              >
+                {error}
+              </p>
+            )}
           </div>
         </section>
 
+        {/* ATTENDANCE CONFIRMATION */}
         {lastRecord && (
-          <section className="mt-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-5">
-            <h2 className="text-lg font-bold text-emerald-300">
+          <section
+            style={{
+              ...styles.panel,
+              borderColor: "#277b63",
+            }}
+          >
+            <h2
+              style={{
+                ...styles.sectionTitle,
+                color: "#6ee7b7",
+              }}
+            >
               Attendance Saved!
             </h2>
-            <p className="mt-3 text-lg font-semibold">
+
+            <p
+              style={{
+                marginTop: "12px",
+                fontSize: "17px",
+                fontWeight: 700,
+              }}
+            >
               {lastRecord.facultyName}
             </p>
-            <div className="mt-2 space-y-1 text-sm text-slate-300">
+
+            <div
+              style={{
+                ...styles.muted,
+                marginTop: "8px",
+                fontSize: "13px",
+              }}
+            >
               <p>Date: {lastRecord.date}</p>
               <p>Class: {lastRecord.classStart}</p>
               <p>Scan Time: {lastRecord.time}</p>
               <p>Status: {lastRecord.status}</p>
             </div>
+
             <a
               href="/history"
-              className="mt-4 inline-block text-sm font-semibold text-blue-300 underline"
+              style={{
+                ...styles.link,
+                display: "inline-block",
+                marginTop: "14px",
+              }}
             >
               View Attendance History →
             </a>
           </section>
         )}
 
-        <section className="mt-6 rounded-2xl border border-slate-700 bg-[#10223a] p-5 shadow-xl shadow-black/10 sm:p-6">
-          <div className="mb-4">
-            <h2 className="text-xl font-bold">Manual QR Test</h2>
-            <p className="mt-1 text-sm text-slate-400">
-              Enter QR data manually for testing.
-            </p>
-          </div>
+        {/* MANUAL QR TEST */}
+        <section style={styles.panel}>
+          <h2 style={styles.sectionTitle}>
+            Manual QR Test
+          </h2>
+
+          <p style={styles.muted}>
+            Enter QR data manually for testing.
+          </p>
 
           <textarea
             value={manualQR}
             onChange={(e) => setManualQR(e.target.value)}
             rows={3}
             placeholder='{"facultyName":"Sherilyn Tobias","facultyId":"FAC-001","classStart":"07:00"}'
-            className="w-full rounded-xl border border-slate-600 bg-[#071426] p-4 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+            style={styles.input}
           />
 
           <button
-            onClick={() => saveAttendance(manualQR)}
-            className="mt-4 rounded-xl border border-blue-500/40 bg-blue-500/10 px-5 py-3 text-sm font-semibold text-blue-300 transition hover:bg-blue-500/20"
+            onClick={() => saveRecord(manualQR)}
+            style={{
+              ...styles.button,
+              marginTop: "14px",
+            }}
           >
             Save Test Scan
           </button>
         </section>
 
-        <section className="mt-6 rounded-2xl border border-slate-700 bg-[#10223a] p-5 shadow-xl shadow-black/10 sm:p-6">
-          <div className="mb-5">
-            <h2 className="text-xl font-bold">Latest Attendance</h2>
-            <p className="mt-1 text-sm text-slate-400">
-              Recently recorded faculty attendance.
-            </p>
-          </div>
+        {/* LATEST ATTENDANCE */}
+        <section style={styles.panel}>
+          <h2 style={styles.sectionTitle}>
+            Latest Attendance
+          </h2>
+
+          <p style={styles.muted}>
+            Recently recorded faculty attendance.
+          </p>
 
           {records.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-700 bg-[#0b192a] py-12 text-center">
-              <p className="text-sm text-slate-400">
+            <div
+              style={{
+                marginTop: "18px",
+                padding: "34px 14px",
+                textAlign: "center",
+                border: "1px dashed #40516a",
+                borderRadius: "11px",
+                background: "#0b192a",
+              }}
+            >
+              <p style={styles.muted}>
                 No attendance records yet.
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-xl border border-slate-700">
-              <table className="w-full min-w-[600px] border-collapse text-left text-sm">
-                <thead className="bg-[#0b192a] text-blue-300">
+            <div
+              style={{
+                overflowX: "auto",
+                marginTop: "18px",
+                border: "1px solid #304761",
+                borderRadius: "10px",
+              }}
+            >
+              <table
+                style={{
+                  width: "100%",
+                  minWidth: "570px",
+                  borderCollapse: "collapse",
+                  textAlign: "left",
+                  fontSize: "13px",
+                }}
+              >
+                <thead
+                  style={{
+                    background: "#0b192a",
+                    color: "#83cfff",
+                  }}
+                >
                   <tr>
-                    {["Record ID", "Faculty Name", "Date", "Time", "Status"].map(
-                      (heading) => (
-                        <th key={heading} className="px-5 py-4 font-semibold">
-                          {heading}
-                        </th>
-                      )
-                    )}
+                    {[
+                      "Record ID",
+                      "Faculty Name",
+                      "Date",
+                      "Time",
+                      "Status",
+                    ].map((heading) => (
+                      <th
+                        key={heading}
+                        style={{
+                          padding: "13px 10px",
+                        }}
+                      >
+                        {heading}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
+
                 <tbody>
                   {records.slice(0, 5).map((record) => (
                     <tr
                       key={record.recordId}
-                      className="border-t border-slate-700 transition hover:bg-white/[0.03]"
+                      style={{
+                        borderTop: "1px solid #263a51",
+                      }}
                     >
-                      <td className="px-5 py-4 text-slate-400">
-                        {record.recordId}
-                      </td>
-                      <td className="px-5 py-4 font-medium text-white">
-                        {record.facultyName}
-                      </td>
-                      <td className="px-5 py-4 text-slate-300">
-                        {record.date}
-                      </td>
-                      <td className="px-5 py-4 text-slate-300">
-                        {record.time}
-                      </td>
-                      <td className="px-5 py-4">
+                      {[
+                        record.recordId,
+                        record.facultyName,
+                        record.date,
+                        record.time,
+                      ].map((value, index) => (
+                        <td
+                          key={index}
+                          style={{
+                            padding: "13px 10px",
+                            color: "#cbd5e1",
+                          }}
+                        >
+                          {value}
+                        </td>
+                      ))}
+
+                      <td
+                        style={{
+                          padding: "13px 10px",
+                        }}
+                      >
                         <span
-                          className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                            record.status === "Present"
-                              ? "bg-emerald-500/10 text-emerald-400"
-                              : "bg-amber-500/10 text-amber-400"
-                          }`}
+                          style={{
+                            display: "inline-block",
+                            borderRadius: "20px",
+                            padding: "5px 10px",
+                            fontSize: "11px",
+                            fontWeight: 700,
+                            color:
+                              record.status === "Present"
+                                ? "#6ee7b7"
+                                : "#fbbf24",
+                            background:
+                              record.status === "Present"
+                                ? "rgba(16,185,129,.12)"
+                                : "rgba(245,158,11,.12)",
+                          }}
                         >
                           {record.status}
                         </span>
@@ -459,9 +752,17 @@ export default function ScanPage() {
           )}
         </section>
 
-        <p className="mt-6 text-center text-xs text-slate-500">
-          Present: class start through 15 minutes after. Late: from the 16th
-          minute onward. One record per faculty, date, and class schedule.
+        <p
+          style={{
+            ...styles.muted,
+            textAlign: "center",
+            fontSize: "12px",
+            marginTop: "22px",
+          }}
+        >
+          Present: class start through 15 minutes after. Late: from
+          the 16th minute onward. One record per faculty, date, and
+          class schedule.
         </p>
       </div>
     </main>
