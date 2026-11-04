@@ -204,8 +204,14 @@ export default function ScanPage() {
       setCameraOn(true);
       setMessage("Camera active. Point it at the faculty QR code.");
 
-      videoRef.current.srcObject = stream;
-      await videoRef.current.play();
+      const video = videoRef.current;
+
+if (!video) {
+  throw new Error("Video element not found.");
+}
+
+video.srcObject = stream;
+await video.play();
 
       async function scan() {
         if (!streamRef.current || busyRef.current) return;
@@ -229,10 +235,10 @@ export default function ScanPage() {
 
       stopCamera();
     } catch (cameraError) {
-  console.error("CAMERA ERROR:", cameraError);
-  setError(`${cameraError.name}: ${cameraError.message}`);
-  stopCamera();
-}
+      console.error("CAMERA ERROR:", cameraError);
+      setError(`${cameraError.name}: ${cameraError.message}`);
+      stopCamera();
+    }
   }
 
   useEffect(() => {
