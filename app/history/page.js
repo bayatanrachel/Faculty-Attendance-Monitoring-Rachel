@@ -1,28 +1,37 @@
 
-                  export const dynamic = "force-dynamic";
+                  
+"use client";
 
-const records = [
-  { id: "9bd18ea9", facultyName: "Sherilyn Tobias", date: "10/30/26", time: "01:00", status: "P" },
-  { id: "AE1024", facultyName: "Sherilyn Tobias", date: "10/30/26", time: "01:09", status: "P" },
-  { id: "AE1025", facultyName: "Sherilyn Tobias", date: "10/30/26", time: "01:12", status: "P" },
-  { id: "AE1023", facultyName: "Sherilyn Tobias", date: "10/30/26", time: "01:14", status: "P" },
-  { id: "AE1022", facultyName: "Sherilyn Tobias", date: "10/30/26", time: "01:24", status: "L" },
-  { id: "c347fa3d", facultyName: "Sherilyn Tobias", date: "10/30/26", time: "01:33", status: "L" },
-  { id: "91d7b9ec", facultyName: "Sherilyn Tobias", date: "10/30/26", time: "01:40", status: "L" },
-  { id: "dedf5c69", facultyName: "Sherilyn Tobias", date: "10/30/26", time: "02:00", status: "A" },
-  { id: "8430687e-f808-43ee-b0d0-c3dd9e2aaae1", facultyName: "Sherilyn Tobias", date: "11/01/26", time: "01:00", status: "P" },
-  { id: "8f15d145-10bf-4862-9d42-f98bccdd85f7", facultyName: "Sherilyn Tobias", date: "11/02/26", time: "01:13", status: "P" },
-];
+import { useEffect, useState } from "react";
 
-function getStatus(status) {
-  if (status === "P") return "Present";
-  if (status === "L") return "Late";
-  if (status === "A") return "Absent";
-  if (status === "E") return "Excused";
-  return status;
-}
+const STORAGE_KEY = "faculty-attendance-records";
 
 export default function AttendanceHistory() {
+  const [records, setRecords] = useState([]);
+
+  useEffect(() => {
+    function loadRecords() {
+      try {
+        const saved = JSON.parse(
+          localStorage.getItem(STORAGE_KEY) || "[]"
+        );
+        setRecords(saved);
+      } catch {
+        setRecords([]);
+      }
+    }
+
+    loadRecords();
+
+    window.addEventListener("storage", loadRecords);
+    window.addEventListener("focus", loadRecords);
+
+    return () => {
+      window.removeEventListener("storage", loadRecords);
+      window.removeEventListener("focus", loadRecords);
+    };
+  }, []);
+
   return (
     <main className="dashboard-page">
       <aside className="sidebar">
@@ -35,6 +44,7 @@ export default function AttendanceHistory() {
           <a className="nav-link" href="/dashboard">Dashboard</a>
           <a className="nav-link active" href="/history">Attendance History</a>
           <a className="nav-link" href="/summary">Attendance Summary</a>
+          <a className="nav-link" href="/scan">QR Scanner</a>
         </nav>
 
         <a className="logout-link" href="/">Log Out</a>
@@ -60,6 +70,9 @@ export default function AttendanceHistory() {
                 View your recorded class attendance.
               </p>
             </div>
+            <p className="section-description">
+              Total Records: {records.length}
+            </p>
           </div>
 
           <div className="history-table-wrap">
@@ -73,20 +86,31 @@ export default function AttendanceHistory() {
                   <th>Status</th>
                 </tr>
               </thead>
+
               <tbody>
-                {records.map((record) => (
-                  <tr key={record.id}>
-                    <td>{record.id}</td>
-                    <td>{record.facultyName}</td>
-                    <td>{record.date}</td>
-                    <td>{record.time}</td>
-                    <td>
-  <span className={`status-badge status-${record.status.toLowerCase()}`}>
-    {getStatus(record.status)}
-  </span>
-</td>
+                {records.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" className="text-center">
+                      No attendance records yet.
+                    </td>
                   </tr>
-                ))}
+                ) : (
+                  records.map((record) => (
+                    <tr key={record.recordId}>
+                      <td>{record.recordId}</td>
+                      <td>{record.facultyName}</td>
+                      <td>{record.date}</td>
+                      <td>{record.time}</td>
+                      <td>
+                        <span
+                          className={`status-badge status-${record.status.toLowerCase()}`}
+                        >
+                          {record.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
