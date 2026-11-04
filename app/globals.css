@@ -1,5 +1,8 @@
 
-    
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -153,8 +156,13 @@ body {
   text-align: center;
 }
 
-.login-note { margin-top: 22px; }
-.login-footer { margin-top: 24px; }
+.login-note {
+  margin-top: 22px;
+}
+
+.login-footer {
+  margin-top: 24px;
+}
 
 /* SYSTEM LAYOUT */
 .dashboard-page {
@@ -291,10 +299,21 @@ body {
   border-radius: 50%;
 }
 
-.stat-indicator.present { background: var(--teal); }
-.stat-indicator.late { background: var(--gold); }
-.stat-indicator.absent { background: var(--red); }
-.stat-indicator.excused { background: var(--purple); }
+.stat-indicator.present {
+  background: var(--teal);
+}
+
+.stat-indicator.late {
+  background: var(--gold);
+}
+
+.stat-indicator.absent {
+  background: var(--red);
+}
+
+.stat-indicator.excused {
+  background: var(--purple);
+}
 
 .stat-card p {
   color: #aebed0;
@@ -401,7 +420,9 @@ body {
 
 .history-table td {
   color: #a4b3c5;
-    /* ATTENDANCE STATUS COLORS */
+}
+
+/* ATTENDANCE STATUS COLORS */
 .status-badge {
   display: inline-block;
   padding: 6px 11px;
@@ -433,7 +454,6 @@ body {
   background: #aa9cdb1f;
   border: 1px solid #aa9cdb4a;
 }
-}
 
 .history-empty {
   padding: 42px 15px !important;
@@ -443,13 +463,25 @@ body {
 
 /* MOBILE */
 @media (max-width: 850px) {
-  .sidebar { width: 210px; padding: 23px 14px; }
-  .dashboard-content { padding: 28px 22px; }
-  .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sidebar {
+    width: 210px;
+    padding: 23px 14px;
+  }
+
+  .dashboard-content {
+    padding: 28px 22px;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 600px) {
-  .dashboard-page { flex-direction: column; }
+  .dashboard-page {
+    flex-direction: column;
+  }
+
   .sidebar {
     width: 100%;
     min-height: auto;
@@ -457,19 +489,59 @@ body {
     border-right: 0;
     border-bottom: 1px solid #24384e;
   }
-  .sidebar-brand { margin-bottom: 15px; }
-  .sidebar-nav { flex-direction: row; flex-wrap: wrap; gap: 6px; }
-  .nav-link, .logout-link { padding: 10px; font-size: 11px; }
-  .logout-link { margin-top: 9px; }
-  .dashboard-content { padding: 24px 16px; }
-  .dashboard-header { align-items: flex-start; margin-bottom: 27px; }
-  .dashboard-header h1 { font-size: 24px; }
-  .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  .stat-card { padding: 16px; }
-  .recent-section { padding: 17px; }
+
+  .sidebar-brand {
+    margin-bottom: 15px;
+  }
+
+  .sidebar-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .nav-link, .logout-link {
+    padding: 10px;
+    font-size: 11px;
+  }
+
+  .logout-link {
+    margin-top: 9px;
+  }
+
+  .dashboard-content {
+    padding: 24px 16px;
+  }
+
+  .dashboard-header {
+    align-items: flex-start;
+    margin-bottom: 27px;
+  }
+
+  .dashboard-header h1 {
+    font-size: 24px;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .stat-card {
+    padding: 16px;
+  }
+
+  .recent-section {
+    padding: 17px;
+  }
 }
 
 @media (max-width: 360px) {
-  .stats-grid { grid-template-columns: 1fr; }
-  .login-card { padding: 30px 22px; }
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .login-card {
+    padding: 30px 22px;
+  }
 }
