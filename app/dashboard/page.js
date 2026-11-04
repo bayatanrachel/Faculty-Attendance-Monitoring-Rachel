@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -16,10 +17,30 @@ const statusLabels = {
 };
 
 const attendanceStats = [
-  { label: "Present", color: "present", note: "On-time attendance" },
-  { label: "Late", color: "late", note: "Late attendance" },
-  { label: "Absent", color: "absent", note: "No attendance record" },
-  { label: "Excused", color: "excused", note: "Excused records" },
+  {
+    label: "Present",
+    color: "present",
+    icon: "✓",
+    note: "On-time attendance",
+  },
+  {
+    label: "Late",
+    color: "late",
+    icon: "◷",
+    note: "Late attendance",
+  },
+  {
+    label: "Absent",
+    color: "absent",
+    icon: "×",
+    note: "No attendance record",
+  },
+  {
+    label: "Excused",
+    color: "excused",
+    icon: "ⓘ",
+    note: "Excused records",
+  },
 ];
 
 export default function Dashboard() {
@@ -31,6 +52,7 @@ export default function Dashboard() {
         const saved = JSON.parse(
           localStorage.getItem(STORAGE_KEY) || "[]"
         );
+
         setRecords(Array.isArray(saved) ? saved : []);
       } catch {
         setRecords([]);
@@ -38,6 +60,7 @@ export default function Dashboard() {
     }
 
     loadRecords();
+
     window.addEventListener("storage", loadRecords);
     window.addEventListener("focus", loadRecords);
 
@@ -56,12 +79,23 @@ export default function Dashboard() {
 
   const recentRecords = [...records].reverse().slice(0, 5);
 
+  const today = new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
   return (
     <main className="dashboard-page">
       <aside className="sidebar">
         <div className="sidebar-brand">
           <div className="logo-icon">QR</div>
-          <span>FACULTY<br />ATTENDANCE</span>
+          <span>
+            FACULTY
+            <br />
+            ATTENDANCE
+          </span>
         </div>
 
         <div className="faculty-profile">
@@ -73,13 +107,23 @@ export default function Dashboard() {
         </div>
 
         <nav className="sidebar-nav">
-          <a className="nav-link active" href="/dashboard">Dashboard</a>
-          <a className="nav-link" href="/history">Attendance History</a>
-          <a className="nav-link" href="/summary">Attendance Summary</a>
-          <a className="nav-link" href="/scan">QR Scanner</a>
+          <a className="nav-link active" href="/dashboard">
+            ◫ <span>Dashboard</span>
+          </a>
+          <a className="nav-link" href="/history">
+            ▤ <span>Attendance History</span>
+          </a>
+          <a className="nav-link" href="/summary">
+            ▥ <span>Attendance Summary</span>
+          </a>
+          <a className="nav-link" href="/scan">
+            ▦ <span>QR Scanner</span>
+          </a>
         </nav>
 
-        <a className="logout-link" href="/">Log Out</a>
+        <a className="logout-link" href="/">
+          ↪ <span>Log Out</span>
+        </a>
       </aside>
 
       <section className="dashboard-content">
@@ -91,22 +135,48 @@ export default function Dashboard() {
               Here is your faculty attendance overview.
             </p>
           </div>
-          <div className="faculty-avatar">ST</div>
+
+          <div className="header-profile">
+            <div className="faculty-avatar">ST</div>
+          </div>
         </header>
 
+        <section className="dashboard-date">
+          <span className="date-icon">▣</span>
+          <div>
+            <strong>Today</strong>
+            <p>{today}</p>
+          </div>
+        </section>
+
         <section className="overview-section">
-          <h2>Attendance Overview</h2>
-          <p className="section-description">
-            Overview of your recorded class attendance.
-          </p>
+          <div className="section-heading">
+            <div>
+              <h2>Attendance Overview</h2>
+              <p className="section-description">
+                Overview of your recorded class attendance.
+              </p>
+            </div>
+            <span className="record-count">
+              {records.length} Total Records
+            </span>
+          </div>
 
           <div className="stats-grid">
             {stats.map((stat) => (
-              <article className="stat-card" key={stat.label}>
-                <div className={`stat-indicator ${stat.color}`} />
-                <p>{stat.label}</p>
+              <article
+                className={`stat-card stat-${stat.color}`}
+                key={stat.label}
+              >
+                <div className="stat-card-top">
+                  <div className={`stat-icon ${stat.color}`}>
+                    {stat.icon}
+                  </div>
+                  <span className="stat-label">{stat.label}</span>
+                </div>
+
                 <h3>{stat.value}</h3>
-                <span>{stat.note}</span>
+                <span className="stat-note">{stat.note}</span>
               </article>
             ))}
           </div>
@@ -117,10 +187,13 @@ export default function Dashboard() {
             <div>
               <h2>Recent Attendance</h2>
               <p className="section-description">
-                Latest 5 records from the attendance sheet.
+                Your latest 5 attendance records.
               </p>
             </div>
-            <a href="/history" className="view-all">View History</a>
+
+            <a href="/history" className="view-all">
+              View All Records →
+            </a>
           </div>
 
           <div className="history-table-wrap">
@@ -147,7 +220,9 @@ export default function Dashboard() {
                       statusLabels[record.status] || record.status;
 
                     return (
-                      <tr key={record.recordId || record.id || index}>
+                      <tr
+                        key={record.recordId || record.id || index}
+                      >
                         <td>{record.facultyName}</td>
                         <td>{record.date}</td>
                         <td>{record.time}</td>
@@ -175,4 +250,4 @@ export default function Dashboard() {
       </section>
     </main>
   );
-    }
+}
