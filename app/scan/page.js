@@ -235,149 +235,213 @@ export default function ScanPage() {
     };
   }, []);
 
-  return (
-    <main className="min-h-screen bg-[#071426] px-4 py-8 text-white">
-      <div className="mx-auto max-w-3xl">
-        <a href="/dashboard" className="text-blue-300">
+                
+return (
+  <main className="min-h-screen bg-[#071426] px-5 py-8 text-white">
+    <div className="mx-auto max-w-6xl">
+
+      {/* Page Header */}
+      <header className="mb-8">
+        <a
+          href="/dashboard"
+          className="inline-flex items-center gap-2 text-sm text-blue-300 transition hover:text-white"
+        >
           ← Back to Dashboard
         </a>
 
-        <header className="mb-7 mt-5">
-          <p className="text-xs uppercase tracking-[.25em] text-blue-400">
-            Faculty Attendance
+        <div className="mt-6">
+          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-blue-400">
+            Faculty Attendance System
           </p>
-          <h1 className="mt-2 text-3xl font-bold">
+          <h1 className="mt-2 text-3xl font-bold tracking-tight md:text-4xl">
             QR Code Scanner
           </h1>
           <p className="mt-2 text-sm text-slate-400">
-            Scan the faculty QR code to record attendance.
+            Scan the faculty QR code to record classroom attendance.
           </p>
-        </header>
+        </div>
+      </header>
 
-        <section className="rounded-2xl border border-slate-700 bg-[#10223a] p-5">
-          <h2 className="mb-4 font-semibold">Camera Scanner</h2>
+      {/* Scanner Card */}
+      <section className="overflow-hidden rounded-2xl border border-slate-700 bg-[#10223a] shadow-2xl shadow-black/20">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700 px-6 py-5">
+          <div>
+            <h2 className="text-lg font-bold">Camera Scanner</h2>
+            <p className="mt-1 text-sm text-slate-400">
+              Position the faculty QR code inside the camera view.
+            </p>
+          </div>
 
-          <div className="overflow-hidden rounded-xl bg-black">
+          <span className={`rounded-full px-4 py-2 text-xs font-semibold ${
+            cameraOn
+              ? "bg-emerald-500/10 text-emerald-400"
+              : "bg-slate-700/60 text-slate-400"
+          }`}>
+            {cameraOn ? "● Camera Active" : "● Camera Inactive"}
+          </span>
+        </div>
+
+        <div className="p-5 md:p-7">
+          <div className="relative mx-auto max-w-3xl overflow-hidden rounded-2xl border border-blue-400/20 bg-black shadow-inner">
             <video
               ref={videoRef}
               autoPlay
               muted
               playsInline
-              className={`aspect-video w-full ${cameraOn ? "block" : "hidden"}`}
+              className={`aspect-video w-full object-cover ${
+                cameraOn ? "block" : "hidden"
+              }`}
             />
 
             {!cameraOn && (
-              <div className="flex aspect-video items-center justify-center text-slate-500">
-                Camera Preview
+              <div className="flex aspect-video flex-col items-center justify-center gap-4 bg-gradient-to-br from-[#0b1d33] to-[#071426]">
+                <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-blue-400/30 bg-blue-500/10 text-4xl text-blue-300">
+                  ▦
+                </div>
+                <div className="text-center">
+                  <p className="font-semibold text-slate-200">
+                    Camera Preview
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Start the camera to begin scanning.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {cameraOn && (
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                <div className="relative h-40 w-40 rounded-2xl border-2 border-blue-400 shadow-[0_0_25px_rgba(59,130,246,0.35)] md:h-56 md:w-56">
+                  <span className="absolute -left-1 -top-1 h-5 w-5 border-l-4 border-t-4 border-blue-400" />
+                  <span className="absolute -right-1 -top-1 h-5 w-5 border-r-4 border-t-4 border-blue-400" />
+                  <span className="absolute -bottom-1 -left-1 h-5 w-5 border-b-4 border-l-4 border-blue-400" />
+                  <span className="absolute -bottom-1 -right-1 h-5 w-5 border-b-4 border-r-4 border-blue-400" />
+                </div>
               </div>
             )}
           </div>
 
-          <div className="mt-4 flex gap-3">
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
             {!cameraOn ? (
               <button
                 onClick={startCamera}
-                className="rounded-xl bg-blue-600 px-5 py-3 font-semibold"
+                className="rounded-xl bg-blue-600 px-8 py-3 font-semibold shadow-lg shadow-blue-900/30 transition hover:bg-blue-500"
               >
                 Start Camera
               </button>
             ) : (
               <button
                 onClick={stopCamera}
-                className="rounded-xl border border-slate-500 px-5 py-3"
+                className="rounded-xl bg-red-600 px-8 py-3 font-semibold transition hover:bg-red-500"
               >
                 Stop Camera
               </button>
             )}
           </div>
 
-          <p className="mt-4 text-sm text-slate-300">{message}</p>
+          <div className="mt-5 rounded-xl border border-slate-700 bg-[#0b192a] p-4 text-center">
+            <p className="text-sm text-slate-300">{message}</p>
 
-          {error && (
-            <p className="mt-3 rounded-lg bg-red-500/10 p-3 text-sm text-red-300">
-              {error}
-            </p>
-          )}
-        </section>
+            {error && (
+              <p className="mt-3 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-300">
+                {error}
+              </p>
+            )}
+          </div>
+        </div>
+      </section>
 
-        <section className="mt-5 rounded-2xl border border-slate-700 bg-[#10223a] p-5">
-          <h2 className="font-semibold">Manual QR Test</h2>
+      {/* Manual QR Test */}
+      <section className="mt-6 rounded-2xl border border-slate-700 bg-[#10223a] p-6 shadow-xl shadow-black/10">
+        <div className="mb-4">
+          <h2 className="text-lg font-bold">Manual QR Test</h2>
+          <p className="mt-1 text-sm text-slate-400">
+            Enter QR data manually for testing.
+          </p>
+        </div>
 
-          <textarea
-            value={manualQR}
-            onChange={(e) => setManualQR(e.target.value)}
-            rows={3}
-            placeholder='{"facultyName":"Sherilyn Tobias","facultyId":"FAC-001","classStart":"07:00"}'
-            className="mt-3 w-full rounded-xl border border-slate-600 bg-[#071426] p-3 text-sm"
-          />
+        <textarea
+          value={manualQR}
+          onChange={(e) => setManualQR(e.target.value)}
+          rows={3}
+          placeholder='{"facultyName":"Sherilyn Tobias","facultyId":"FAC-001","classStart":"07:00"}'
+          className="w-full rounded-xl border border-slate-600 bg-[#071426] p-4 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+        />
 
-          <button
-            onClick={() => saveAttendance(manualQR)}
-            className="mt-3 rounded-xl border border-blue-500 px-4 py-2 text-blue-300"
-          >
-            Save Test Scan
-          </button>
-        </section>
+        <button
+          onClick={() => saveAttendance(manualQR)}
+          className="mt-4 rounded-xl border border-blue-500/40 bg-blue-500/10 px-5 py-3 text-sm font-semibold text-blue-300 transition hover:bg-blue-500/20"
+        >
+          Save Test Scan
+        </button>
+      </section>
 
-        {lastRecord && (
-          <section className="mt-5 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-5">
-            <h2 className="font-semibold text-emerald-300">
-              Attendance Saved!
-            </h2>
+      {/* Latest Attendance */}
+      <section className="mt-6 rounded-2xl border border-slate-700 bg-[#10223a] p-6 shadow-xl shadow-black/10">
+        <div className="mb-5">
+          <h2 className="text-lg font-bold">Latest Attendance</h2>
+          <p className="mt-1 text-sm text-slate-400">
+            Recently recorded faculty attendance.
+          </p>
+        </div>
 
-            <p className="mt-2 text-lg font-bold">
-              {lastRecord.facultyName}
-            </p>
-            <p>{lastRecord.date}</p>
-            <p>Class: {lastRecord.classStart}</p>
-            <p>Scan Time: {lastRecord.time}</p>
-            <p className="mt-2 font-semibold">{lastRecord.status}</p>
-
-            <a href="/history" className="mt-4 inline-block text-blue-300 underline">
-              View Attendance History →
-            </a>
-          </section>
-        )}
-
-        <section className="mt-5 rounded-2xl border border-slate-700 bg-[#10223a] p-5">
-          <h2 className="mb-3 font-semibold">Latest Attendance</h2>
-
-          {records.length === 0 ? (
-            <p className="text-sm text-slate-400">No records yet.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-left text-sm">
-                <thead>
-                  <tr className="text-blue-300">
-                    {["Record ID", "Faculty Name", "Date", "Time", "Status"].map((heading) => (
-                      <th key={heading} className="border-b border-slate-600 p-3">
-                        {heading}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {records.slice(0, 5).map((record) => (
-                    <tr key={record.recordId}>
-                      {[record.recordId, record.facultyName, record.date, record.time, record.status].map((value, index) => (
-                        <td key={index} className="border-b border-slate-700 p-3">
-                          {value}
-                        </td>
-                      ))}
-                    </tr>
+        {records.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-slate-700 bg-[#0b192a] py-12 text-center">
+            <p className="text-slate-400">No attendance records yet.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-xl border border-slate-700">
+            <table className="w-full min-w-[600px] border-collapse text-left text-sm">
+              <thead className="bg-[#0b192a] text-blue-300">
+                <tr>
+                  {["Record ID", "Faculty Name", "Date", "Time", "Status"].map((heading) => (
+                    <th key={heading} className="px-5 py-4 font-semibold">
+                      {heading}
+                    </th>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
+                </tr>
+              </thead>
+              <tbody>
+                {records.slice(0, 5).map((record) => (
+                  <tr
+                    key={record.recordId}
+                    className="border-t border-slate-700 transition hover:bg-white/[0.03]"
+                  >
+                    <td className="px-5 py-4 text-slate-400">
+                      {record.recordId}
+                    </td>
+                    <td className="px-5 py-4 font-medium text-white">
+                      {record.facultyName}
+                    </td>
+                    <td className="px-5 py-4 text-slate-300">
+                      {record.date}
+                    </td>
+                    <td className="px-5 py-4 text-slate-300">
+                      {record.time}
+                    </td>
+                    <td className="px-5 py-4">
+                      <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                        record.status === "Present"
+                          ? "bg-emerald-500/10 text-emerald-400"
+                          : record.status === "Late"
+                          ? "bg-amber-500/10 text-amber-400"
+                          : "bg-red-500/10 text-red-400"
+                      }`}>
+                        {record.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
-        <p className="mt-6 text-xs text-slate-500">
-          Present: class start through 15 minutes after.
-          Late: from the 16th minute onward.
-          One record per faculty, date, and class schedule.
-        </p>
-      </div>
-    </main>
-  );
+      <footer className="mt-8 text-center text-xs text-slate-600">
+        Faculty Attendance Monitoring System
+      </footer>
+    </div>
+  </main>
+);
 }
