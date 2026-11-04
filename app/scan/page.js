@@ -4,6 +4,10 @@
 import { useEffect, useRef, useState } from "react";
 
 const KEY = "faculty-attendance-records";
+const FACULTY_NAME = "Sherilyn Tobias";
+const FACULTY_ID = "FAC-001";
+const PERMANENT_QR_URL =
+  "https://faculty-attendance-monitoring-rache-xi.vercel.app";
 
 // Internal schedule validation only. Not displayed on the page.
 const SCHEDULES = Array.from({ length: 17 }, (_, i) => {
@@ -90,6 +94,7 @@ const styles = {
     fontSize: "14px",
     outline: "none",
     resize: "vertical",
+    boxSizing: "border-box",
   },
   sectionTitle: {
     fontSize: "20px",
@@ -109,17 +114,19 @@ function getRecords() {
 
 function parseQR(raw) {
   try {
-    const data = JSON.parse(raw);
+    const scannedURL = new URL(raw.trim());
 
-    if (
-      !data.facultyName ||
-      !data.facultyId ||
-      !SCHEDULES.includes(data.classStart)
-    ) {
+    const scannedAddress =
+      scannedURL.origin + scannedURL.pathname.replace(/\/+$/, "");
+
+    if (scannedAddress !== PERMANENT_QR_URL) {
       return null;
     }
 
-    return data;
+    return {
+      facultyName: FACULTY_NAME,
+      facultyId: FACULTY_ID,
+    };
   } catch {
     return null;
   }
@@ -138,7 +145,7 @@ export default function ScanPage() {
     "Select Start Camera to begin scanning."
   );
   const [error, setError] = useState("");
-  const [manualQR, setManualQR] = useState("");
+  const [manualQR, setManualQR] = useState(PERMANENT_QR_URL);
   const [lastRecord, setLastRecord] = useState(null);
 
   function loadRecords() {
@@ -172,26 +179,31 @@ export default function ScanPage() {
     const qr = parseQR(raw);
 
     if (!qr) {
-      setError(
-        "Invalid QR data. Required fields: facultyName, facultyId, and a valid classStart schedule."
-      );
+      setError("Invalid faculty QR code. Please scan the official faculty QR code.");
       return;
     }
 
     const now = new Date();
-    const [hour, minute] = qr.classStart.split(":").map(Number);
+    const hour = now.getHours();
 
-    const classStart = new Date(now);
-    classStart.setHours(hour, minute, 0, 0);
-
-    const cutoff = new Date(
-      classStart.getTime() + 15 * 60 * 1000
-    );
-
-    if (now < classStart) {
-      setError("The scheduled class has not started yet.");
+    if (hour < 7 || hour > 23) {
+      setError("There is no scheduled class at this time.");
       return;
     }
+
+    const classStart = `${String(hour).padStart(2, "0")}:00`;
+
+    if (!SCHEDULES.includes(classStart)) {
+      setError("No valid class schedule was found.");
+      return;
+    }
+
+    const scheduledStart = new Date(now);
+    scheduledStart.setMinutes(0, 0, 0);
+
+    const cutoff = new Date(
+      scheduledStart.getTime() + 15 * 60 * 1000
+    );
 
     const date = [
       now.getFullYear(),
@@ -203,23 +215,26 @@ export default function ScanPage() {
 
     const duplicate = saved.some(
       (record) =>
-        record.facultyId === qr.facultyId &&
         record.date === date &&
-        record.classStart === qr.classStart
+        record.classStart === classStart &&
+        (record.facultyId === qr.facultyId ||
+          (!record.facultyId &&
+            record.facultyName === qr.facultyName))
     );
 
     if (duplicate) {
-      setError(
-        "An attendance record already exists for this schedule."
-      );
+      setError("Attendance has already been recorded for this schedule.");
       return;
     }
 
     busyRef.current = true;
 
     const record = {
-      recordId: crypto.randomUUID().slice(0, 8),
-      facultyName: String(qr.facultyName).trim(),
+      recordId:
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID().slice(0, 8)
+          : `${Date.now()}`,
+      facultyName: qr.facultyName,
       facultyId: qr.facultyId,
       date,
       time: now.toLocaleTimeString("en-US", {
@@ -227,7 +242,7 @@ export default function ScanPage() {
         minute: "2-digit",
       }),
       status: now <= cutoff ? "Present" : "Late",
-      classStart: qr.classStart,
+      classStart,
     };
 
     const updated = [record, ...saved];
@@ -238,14 +253,13 @@ export default function ScanPage() {
       setLastRecord(record);
       setMessage("Attendance successfully recorded!");
       setError("");
+      stopCamera();
     } catch (saveError) {
       setError("Unable to save the attendance record.");
       console.error(saveError);
     } finally {
       busyRef.current = false;
     }
-
-    stopCamera();
   }
 
   async function startCamera() {
@@ -262,7 +276,6 @@ export default function ScanPage() {
     let stream;
 
     try {
-      // Request camera access first.
       stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: { ideal: "environment" },
@@ -272,14 +285,13 @@ export default function ScanPage() {
 
       streamRef.current = stream;
 
-      // Check QR detection support after camera permission.
       if (!("BarcodeDetector" in window)) {
         stream.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
 
         setMessage("Camera permission granted.");
         setError(
-          "This browser does not support built-in QR detection. Update Google Chrome or use a supported browser."
+          "This browser does not support built-in QR detection. Use a supported browser."
         );
         return;
       }
@@ -288,7 +300,6 @@ export default function ScanPage() {
         formats: ["qr_code"],
       });
 
-      // Mount the video element before accessing its ref.
       setCameraOn(true);
 
       await new Promise((resolve) =>
@@ -359,9 +370,6 @@ export default function ScanPage() {
     window.addEventListener("focus", refresh);
 
     return () => {
-      window.removeEventListener("storage", refresh);
-      window.removeEventListener("focus", refresh);
-
       scanningRef.current = false;
 
       if (frameRef.current) {
@@ -389,11 +397,10 @@ export default function ScanPage() {
           </h1>
 
           <p style={styles.muted}>
-            Scan the faculty QR code to record classroom attendance.
+            Scan the permanent faculty QR code to record classroom attendance.
           </p>
         </header>
 
-        {/* CAMERA SCANNER */}
         <section style={styles.panel}>
           <div
             style={{
@@ -433,7 +440,6 @@ export default function ScanPage() {
             </span>
           </div>
 
-          {/* Keep the video element mounted at all times. */}
           <video
             ref={videoRef}
             autoPlay
@@ -554,7 +560,6 @@ export default function ScanPage() {
           </div>
         </section>
 
-        {/* ATTENDANCE CONFIRMATION */}
         {lastRecord && (
           <section
             style={{
@@ -607,21 +612,20 @@ export default function ScanPage() {
           </section>
         )}
 
-        {/* MANUAL QR TEST */}
         <section style={styles.panel}>
           <h2 style={styles.sectionTitle}>
             Manual QR Test
           </h2>
 
           <p style={styles.muted}>
-            Enter QR data manually for testing.
+            Enter the permanent faculty QR URL to test attendance recording.
           </p>
 
           <textarea
             value={manualQR}
             onChange={(e) => setManualQR(e.target.value)}
             rows={3}
-            placeholder='{"facultyName":"Sherilyn Tobias","facultyId":"FAC-001","classStart":"07:00"}'
+            placeholder={PERMANENT_QR_URL}
             style={styles.input}
           />
 
@@ -636,7 +640,6 @@ export default function ScanPage() {
           </button>
         </section>
 
-        {/* LATEST ATTENDANCE */}
         <section style={styles.panel}>
           <h2 style={styles.sectionTitle}>
             Latest Attendance
