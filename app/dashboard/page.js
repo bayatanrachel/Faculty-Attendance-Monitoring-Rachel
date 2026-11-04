@@ -1,22 +1,18 @@
+"use client";
 
-const records = [
-  { id: "9bd18ea9", facultyName: "Sherilyn Tobias", date: "10/30/26", time: "01:00", status: "P" },
-  { id: "AE1024", facultyName: "Sherilyn Tobias", date: "10/30/26", time: "01:09", status: "P" },
-  { id: "AE1025", facultyName: "Sherilyn Tobias", date: "10/30/26", time: "01:12", status: "P" },
-  { id: "AE1023", facultyName: "Sherilyn Tobias", date: "10/30/26", time: "01:14", status: "P" },
-  { id: "AE1022", facultyName: "Sherilyn Tobias", date: "10/30/26", time: "01:24", status: "L" },
-  { id: "c347fa3d", facultyName: "Sherilyn Tobias", date: "10/30/26", time: "01:33", status: "L" },
-  { id: "91d7b9ec", facultyName: "Sherilyn Tobias", date: "10/30/26", time: "01:40", status: "L" },
-  { id: "dedf5c69", facultyName: "Sherilyn Tobias", date: "10/30/26", time: "02:00", status: "A" },
-  { id: "8430687e-f808-43ee-b0d0-c3dd9e2aaae1", facultyName: "Sherilyn Tobias", date: "11/01/26", time: "01:00", status: "P" },
-  { id: "8f15d145-10bf-4862-9d42-f98bccdd85f7", facultyName: "Sherilyn Tobias", date: "11/02/26", time: "01:13", status: "P" },
-];
+import { useEffect, useState } from "react";
+
+const STORAGE_KEY = "faculty-attendance-records";
 
 const statusLabels = {
   P: "Present",
   L: "Late",
   A: "Absent",
   E: "Excused",
+  Present: "Present",
+  Late: "Late",
+  Absent: "Absent",
+  Excused: "Excused",
 };
 
 const attendanceStats = [
@@ -24,12 +20,40 @@ const attendanceStats = [
   { label: "Late", color: "late", note: "Late attendance" },
   { label: "Absent", color: "absent", note: "No attendance record" },
   { label: "Excused", color: "excused", note: "Excused records" },
-].map((stat) => ({
-  ...stat,
-  value: records.filter((record) => statusLabels[record.status] === stat.label).length,
-}));
+];
 
 export default function Dashboard() {
+  const [records, setRecords] = useState([]);
+
+  useEffect(() => {
+    function loadRecords() {
+      try {
+        const saved = JSON.parse(
+          localStorage.getItem(STORAGE_KEY) || "[]"
+        );
+        setRecords(Array.isArray(saved) ? saved : []);
+      } catch {
+        setRecords([]);
+      }
+    }
+
+    loadRecords();
+    window.addEventListener("storage", loadRecords);
+    window.addEventListener("focus", loadRecords);
+
+    return () => {
+      window.removeEventListener("storage", loadRecords);
+      window.removeEventListener("focus", loadRecords);
+    };
+  }, []);
+
+  const stats = attendanceStats.map((stat) => ({
+    ...stat,
+    value: records.filter(
+      (record) => statusLabels[record.status] === stat.label
+    ).length,
+  }));
+
   const recentRecords = [...records].reverse().slice(0, 5);
 
   return (
@@ -52,6 +76,7 @@ export default function Dashboard() {
           <a className="nav-link active" href="/dashboard">Dashboard</a>
           <a className="nav-link" href="/history">Attendance History</a>
           <a className="nav-link" href="/summary">Attendance Summary</a>
+          <a className="nav-link" href="/scan">QR Scanner</a>
         </nav>
 
         <a className="logout-link" href="/">Log Out</a>
@@ -76,7 +101,7 @@ export default function Dashboard() {
           </p>
 
           <div className="stats-grid">
-            {attendanceStats.map((stat) => (
+            {stats.map((stat) => (
               <article className="stat-card" key={stat.label}>
                 <div className={`stat-indicator ${stat.color}`} />
                 <p>{stat.label}</p>
@@ -108,19 +133,37 @@ export default function Dashboard() {
                   <th>Status</th>
                 </tr>
               </thead>
+
               <tbody>
-                {recentRecords.map((record) => (
-                  <tr key={record.id}>
-                    <td>{record.facultyName}</td>
-                    <td>{record.date}</td>
-                    <td>{record.time}</td>
-                    <td>
-                      <span className={`status-badge status-${record.status.toLowerCase()}`}>
-                        {statusLabels[record.status] || record.status}
-                      </span>
+                {recentRecords.length === 0 ? (
+                  <tr>
+                    <td colSpan="4" className="text-center">
+                      No attendance records yet.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  recentRecords.map((record, index) => {
+                    const status =
+                      statusLabels[record.status] || record.status;
+
+                    return (
+                      <tr key={record.recordId || record.id || index}>
+                        <td>{record.facultyName}</td>
+                        <td>{record.date}</td>
+                        <td>{record.time}</td>
+                        <td>
+                          <span
+                            className={`status-badge status-${String(
+                              status
+                            ).toLowerCase()}`}
+                          >
+                            {status}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
@@ -132,4 +175,4 @@ export default function Dashboard() {
       </section>
     </main>
   );
-}
+    }
