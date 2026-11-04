@@ -226,15 +226,13 @@ export default function ScanPage() {
       }
 
       frameRef.current = requestAnimationFrame(scan);
-    } catch (cameraError) {
-      console.error(cameraError);
-      setError(
-        cameraError.name === "NotAllowedError"
-          ? "Camera permission denied. Allow camera access in your browser settings."
-          : "Camera unavailable. Check your camera and browser permissions."
-      );
+
       stopCamera();
-    }
+    }} catch (cameraError) {
+  console.error("CAMERA ERROR:", cameraError);
+  setError(`${cameraError.name}: ${cameraError.message}`);
+  stopCamera();
+}
   }
 
   useEffect(() => {
