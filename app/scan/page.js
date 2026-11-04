@@ -228,7 +228,7 @@ export default function ScanPage() {
       frameRef.current = requestAnimationFrame(scan);
 
       stopCamera();
-    }} catch (cameraError) {
+    } catch (cameraError) {
   console.error("CAMERA ERROR:", cameraError);
   setError(`${cameraError.name}: ${cameraError.message}`);
   stopCamera();
