@@ -3,122 +3,102 @@
 
 import { useEffect, useRef, useState } from "react";
 
-const KEY = "faculty-attendance-records";
+const STORAGE_KEY = "faculty-attendance-records";
 
-const SCHEDULES = Array.from({ length: 17 }, (_, i) => {
-  const hour = i + 7;
-  return `${String(hour).padStart(2, "0")}:00`;
-});
+const SCHEDULES = Array.from({ length: 17 }, (_, i) =>
+  `${String(i + 7).padStart(2, "0")}:00`
+);
 
-const styles = {
-  page: {
-    minHeight: "100vh",
-    background: "#091321",
-    color: "#edf4ff",
-    padding: "28px 18px",
-    fontFamily: "Arial, sans-serif",
-  },
-  container: { maxWidth: "950px", margin: "0 auto" },
-  link: { color: "#83cfff", textDecoration: "none" },
-  heading: { fontSize: "30px", margin: "22px 0 8px" },
-  muted: { color: "#9aacc0", lineHeight: 1.6 },
-  panel: {
-    background: "#14253a",
-    border: "1px solid #2b4059",
-    borderRadius: "16px",
-    padding: "22px",
-    marginTop: "22px",
-  },
-  button: {
-    background: "#2678db",
-    color: "white",
-    border: 0,
-    borderRadius: "9px",
-    padding: "13px 20px",
-    fontWeight: "bold",
-    cursor: "pointer",
-  },
-  video: {
-    width: "100%",
-    maxHeight: "430px",
-    objectFit: "cover",
-    borderRadius: "12px",
-    background: "#050b13",
-  },
-  input: {
-    width: "100%",
-    padding: "12px",
-    borderRadius: "8px",
-    border: "1px solid #405671",
-    background: "#0b192a",
-    color: "white",
-    marginTop: "8px",
-  },
-};
+function getRecords() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    return Array.isArray(saved) ? saved : [];
+  } catch {
+    return [];
+  }
+}
+
+function parseQR(raw) {
+  try {
+    const data = JSON.parse(raw);
+
+    if (
+      !data.facultyName ||
+      !data.facultyId ||
+      !SCHEDULES.includes(data.classStart)
+    ) {
+      return null;
+    }
+
+    return data;
+  } catch {
+    return null;
+  }
+}
 
 export default function ScanPage() {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
-  const busyRef = useRef(false);
+  const scanningRef = useRef(false);
   const frameRef = useRef(null);
+  const busyRef = useRef(false);
 
-  const [cameraOn, setCameraOn] = useState(false);
-  const [message, setMessage] = useState("Ready to scan.");
-  const [error, setError] = useState("");
   const [records, setRecords] = useState([]);
-  const [detectorSupported, setDetectorSupported] = useState(true);
+  const [cameraOn, setCameraOn] = useState(false);
+  const [message, setMessage] = useState(
+    "Pindutin ang Start Camera para mag-scan."
+  );
+  const [error, setError] = useState("");
+  const [manualQR, setManualQR] = useState("");
+  const [lastRecord, setLastRecord] = useState(null);
 
   function loadRecords() {
-    try {
-      const saved = JSON.parse(localStorage.getItem(KEY) || "[]");
-      setRecords(Array.isArray(saved) ? saved : []);
-    } catch {
-      setRecords([]);
-    }
+    setRecords(getRecords());
   }
 
   function stopCamera() {
+    scanningRef.current = false;
+    busyRef.current = false;
+
     if (frameRef.current) {
       cancelAnimationFrame(frameRef.current);
       frameRef.current = null;
     }
 
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    streamRef.current = null;
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.srcObject = null;
+    }
+
     setCameraOn(false);
   }
 
-  function saveRecord(raw) {
+  function saveAttendance(raw) {
     if (busyRef.current) return;
 
-    let qr;
+    const qr = parseQR(raw);
 
-    try {
-      qr = JSON.parse(raw);
-    } catch {
-      setError("Invalid QR code. Please scan the correct faculty QR.");
-      return;
-    }
-
-    const facultyName = String(qr.facultyName || "").trim();
-    const classStart = String(qr.classStart || "");
-
-    if (!facultyName || !SCHEDULES.includes(classStart)) {
+    if (!qr) {
       setError(
-        "Invalid QR. It must contain facultyName and a schedule from 7 AM to 11 PM."
+        "Invalid QR. Kailangan ang facultyName, facultyId, at valid classStart schedule."
       );
       return;
     }
 
     const now = new Date();
-    const [hour, minute] = classStart.split(":").map(Number);
+    const [hour, minute] = qr.classStart.split(":").map(Number);
 
-    const start = new Date(now);
-    start.setHours(hour, minute, 0, 0);
+    const classStart = new Date(now);
+    classStart.setHours(hour, minute, 0, 0);
 
-    const cutoff = new Date(start.getTime() + 15 * 60 * 1000);
+    const cutoff = new Date(classStart.getTime() + 15 * 60 * 1000);
 
-    if (now < start) {
+    if (now < classStart) {
       setError("Hindi pa nagsisimula ang scheduled class.");
       return;
     }
@@ -129,24 +109,17 @@ export default function ScanPage() {
       String(now.getDate()).padStart(2, "0"),
     ].join("-");
 
-    let saved = [];
-
-    try {
-      saved = JSON.parse(localStorage.getItem(KEY) || "[]");
-      if (!Array.isArray(saved)) saved = [];
-    } catch {
-      saved = [];
-    }
+    const saved = getRecords();
 
     const duplicate = saved.some(
       (record) =>
-        record.facultyName === facultyName &&
+        record.facultyId === qr.facultyId &&
         record.date === date &&
-        record.classStart === classStart
+        record.classStart === qr.classStart
     );
 
     if (duplicate) {
-      setError("May existing attendance record na para sa class na ito.");
+      setError("May existing attendance record na para sa schedule na ito.");
       return;
     }
 
@@ -154,25 +127,32 @@ export default function ScanPage() {
 
     const record = {
       recordId: crypto.randomUUID().slice(0, 8),
-      facultyName,
+      facultyName: qr.facultyName,
+      facultyId: qr.facultyId,
+      date,
       time: now.toLocaleTimeString("en-US", {
         hour: "2-digit",
         minute: "2-digit",
       }),
-      date: now.toLocaleDateString("en-US"),
       status: now <= cutoff ? "Present" : "Late",
-      classStart,
+      classStart: qr.classStart,
     };
 
     const updated = [record, ...saved];
 
-    localStorage.setItem(KEY, JSON.stringify(updated));
-    setRecords(updated);
-    setMessage(`${record.status}! Attendance successfully recorded.`);
-    setError("");
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      setRecords(updated);
+      setLastRecord(record);
+      setMessage("Attendance successfully recorded!");
+      setError("");
+    } catch (saveError) {
+      setError("Hindi ma-save ang attendance record.");
+      console.error(saveError);
+    }
 
-    stopCamera();
     busyRef.current = false;
+    stopCamera();
   }
 
   async function startCamera() {
@@ -185,8 +165,7 @@ export default function ScanPage() {
     }
 
     if (!("BarcodeDetector" in window)) {
-      setDetectorSupported(false);
-      setError("QR scanning is not supported by this browser.");
+      setError("QR scanning is not supported by this browser. Try an updated Chrome.");
       return;
     }
 
@@ -200,40 +179,41 @@ export default function ScanPage() {
         audio: false,
       });
 
+      const video = videoRef.current;
+
+      if (!video) {
+        stream.getTracks().forEach((track) => track.stop());
+        throw new Error("Video element not found.");
+      }
+
       streamRef.current = stream;
+      scanningRef.current = true;
+
+      video.srcObject = stream;
+      await video.play();
+
       setCameraOn(true);
       setMessage("Camera active. Point it at the faculty QR code.");
 
-      const video = videoRef.current;
-
-if (!video) {
-  throw new Error("Video element not found.");
-}
-
-video.srcObject = stream;
-await video.play();
-
-      async function scan() {
-        if (!streamRef.current || busyRef.current) return;
+      async function scanFrame() {
+        if (!scanningRef.current || !streamRef.current) return;
 
         try {
-          const codes = await detector.detect(videoRef.current);
+          const codes = await detector.detect(video);
 
-          if (codes.length > 0) {
-            saveRecord(codes[0].rawValue);
+          if (codes.length > 0 && codes[0].rawValue) {
+            saveAttendance(codes[0].rawValue);
           }
         } catch (scanError) {
-          console.error(scanError);
+          console.error("SCAN ERROR:", scanError);
         }
 
-        if (streamRef.current) {
-          frameRef.current = requestAnimationFrame(scan);
+        if (scanningRef.current && streamRef.current) {
+          frameRef.current = requestAnimationFrame(scanFrame);
         }
       }
 
-      frameRef.current = requestAnimationFrame(scan);
-
-      stopCamera();
+      frameRef.current = requestAnimationFrame(scanFrame);
     } catch (cameraError) {
       console.error("CAMERA ERROR:", cameraError);
       setError(`${cameraError.name}: ${cameraError.message}`);
@@ -244,148 +224,133 @@ await video.play();
   useEffect(() => {
     loadRecords();
 
-    window.addEventListener("storage", loadRecords);
-    window.addEventListener("focus", loadRecords);
-
     return () => {
-      window.removeEventListener("storage", loadRecords);
-      window.removeEventListener("focus", loadRecords);
-      streamRef.current?.getTracks().forEach((track) => track.stop());
+      scanningRef.current = false;
 
       if (frameRef.current) {
         cancelAnimationFrame(frameRef.current);
       }
+
+      streamRef.current?.getTracks().forEach((track) => track.stop());
     };
   }, []);
 
   return (
-    <main style={styles.page}>
-      <div style={styles.container}>
-        <a href="/dashboard" style={styles.link}>← Back to Dashboard</a>
+    <main className="min-h-screen bg-[#071426] px-4 py-8 text-white">
+      <div className="mx-auto max-w-3xl">
+        <a href="/dashboard" className="text-blue-300">
+          ← Back to Dashboard
+        </a>
 
-        <h1 style={styles.heading}>QR Code Scanner</h1>
-        <p style={styles.muted}>
-          Scan the faculty QR code to record class attendance.
-        </p>
-
-        <section style={styles.panel}>
-          <h2 style={{ fontSize: "20px", marginBottom: "8px" }}>
-            Camera Scanner
-          </h2>
-          <p style={styles.muted}>
-            Use your phone's rear camera to scan the faculty QR code.
+        <header className="mb-7 mt-5">
+          <p className="text-xs uppercase tracking-[.25em] text-blue-400">
+            Faculty Attendance
           </p>
+          <h1 className="mt-2 text-3xl font-bold">
+            QR Code Scanner
+          </h1>
+          <p className="mt-2 text-sm text-slate-400">
+            Scan the faculty QR code to record attendance.
+          </p>
+        </header>
 
-          <div style={{ marginTop: "20px" }}>
-            {cameraOn ? (
-              <video ref={videoRef} muted playsInline style={styles.video} />
-            ) : (
-              <div style={{
-                ...styles.video,
-                aspectRatio: "16 / 9",
-                display: "grid",
-                placeItems: "center",
-                color: "#9aacc0",
-              }}>
-                <div style={{ textAlign: "center", padding: "20px" }}>
-                  <div style={{ fontSize: "42px" }}>▦</div>
-                  Camera preview
-                </div>
+        <section className="rounded-2xl border border-slate-700 bg-[#10223a] p-5">
+          <h2 className="mb-4 font-semibold">Camera Scanner</h2>
+
+          <div className="overflow-hidden rounded-xl bg-black">
+            <video
+              ref={videoRef}
+              autoPlay
+              muted
+              playsInline
+              className={`aspect-video w-full ${cameraOn ? "block" : "hidden"}`}
+            />
+
+            {!cameraOn && (
+              <div className="flex aspect-video items-center justify-center text-slate-500">
+                Camera Preview
               </div>
             )}
           </div>
 
-          <div style={{ marginTop: "18px" }}>
+          <div className="mt-4 flex gap-3">
             {!cameraOn ? (
-              <button onClick={startCamera} style={styles.button}>
+              <button
+                onClick={startCamera}
+                className="rounded-xl bg-blue-600 px-5 py-3 font-semibold"
+              >
                 Start Camera
               </button>
             ) : (
               <button
                 onClick={stopCamera}
-                style={{ ...styles.button, background: "#a43d4a" }}
+                className="rounded-xl border border-slate-500 px-5 py-3"
               >
                 Stop Camera
               </button>
             )}
           </div>
 
-          <p style={{ marginTop: "16px", color: "#c8d7e8" }}>
-            {message}
-          </p>
+          <p className="mt-4 text-sm text-slate-300">{message}</p>
 
           {error && (
-            <p style={{ color: "#ff929c", marginTop: "10px" }}>
+            <p className="mt-3 rounded-lg bg-red-500/10 p-3 text-sm text-red-300">
               {error}
             </p>
           )}
+        </section>
 
-          {!detectorSupported && (
-            <p style={styles.muted}>
-              Try an updated browser that supports QR code detection.
+        <section className="mt-5 rounded-2xl border border-slate-700 bg-[#10223a] p-5">
+          <h2 className="font-semibold">Manual QR Test</h2>
+
+          <textarea
+            value={manualQR}
+            onChange={(e) => setManualQR(e.target.value)}
+            rows={3}
+            placeholder='{"facultyName":"Sherilyn Tobias","facultyId":"FAC-001","classStart":"07:00"}'
+            className="mt-3 w-full rounded-xl border border-slate-600 bg-[#071426] p-3 text-sm"
+          />
+
+          <button
+            onClick={() => saveAttendance(manualQR)}
+            className="mt-3 rounded-xl border border-blue-500 px-4 py-2 text-blue-300"
+          >
+            Save Test Scan
+          </button>
+        </section>
+
+        {lastRecord && (
+          <section className="mt-5 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-5">
+            <h2 className="font-semibold text-emerald-300">
+              Attendance Saved!
+            </h2>
+
+            <p className="mt-2 text-lg font-bold">
+              {lastRecord.facultyName}
             </p>
-          )}
-        </section>
+            <p>{lastRecord.date}</p>
+            <p>Class: {lastRecord.classStart}</p>
+            <p>Scan Time: {lastRecord.time}</p>
+            <p className="mt-2 font-semibold">{lastRecord.status}</p>
 
-        <section style={styles.panel}>
-          <h2 style={{ fontSize: "20px", marginBottom: "12px" }}>
-            Class Schedule
-          </h2>
-          <p style={styles.muted}>
-            Each hourly class has a 15-minute grace period.
-          </p>
+            <a href="/history" className="mt-4 inline-block text-blue-300 underline">
+              View Attendance History →
+            </a>
+          </section>
+        )}
 
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))",
-            gap: "10px",
-            marginTop: "18px",
-          }}>
-            {SCHEDULES.map((time) => {
-              const hour = Number(time.slice(0, 2));
-              const label = `${hour > 12 ? hour - 12 : hour}:00 ${hour >= 12 ? "PM" : "AM"}`;
-
-              return (
-                <div key={time} style={{
-                  background: "#0b192a",
-                  border: "1px solid #304761",
-                  borderRadius: "9px",
-                  padding: "12px",
-                  textAlign: "center",
-                  fontWeight: "bold",
-                }}>
-                  {label}
-                </div>
-              );
-            })}
-          </div>
-
-          <p style={{ ...styles.muted, marginTop: "16px" }}>
-            Present: class start through 15 minutes after.
-            <br />
-            Late: 16 minutes after class start onward.
-          </p>
-        </section>
-
-        <section style={styles.panel}>
-          <h2 style={{ fontSize: "20px", marginBottom: "14px" }}>
-            Latest Attendance
-          </h2>
+        <section className="mt-5 rounded-2xl border border-slate-700 bg-[#10223a] p-5">
+          <h2 className="mb-3 font-semibold">Latest Attendance</h2>
 
           {records.length === 0 ? (
-            <p style={styles.muted}>No records yet.</p>
+            <p className="text-sm text-slate-400">No records yet.</p>
           ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                textAlign: "left",
-                fontSize: "13px",
-              }}>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-left text-sm">
                 <thead>
-                  <tr style={{ color: "#83cfff" }}>
+                  <tr className="text-blue-300">
                     {["Record ID", "Faculty Name", "Date", "Time", "Status"].map((heading) => (
-                      <th key={heading} style={{ padding: "12px 8px", borderBottom: "1px solid #304761" }}>
+                      <th key={heading} className="border-b border-slate-600 p-3">
                         {heading}
                       </th>
                     ))}
@@ -395,7 +360,7 @@ await video.play();
                   {records.slice(0, 5).map((record) => (
                     <tr key={record.recordId}>
                       {[record.recordId, record.facultyName, record.date, record.time, record.status].map((value, index) => (
-                        <td key={index} style={{ padding: "12px 8px", borderBottom: "1px solid #263a51" }}>
+                        <td key={index} className="border-b border-slate-700 p-3">
                           {value}
                         </td>
                       ))}
@@ -406,6 +371,12 @@ await video.play();
             </div>
           )}
         </section>
+
+        <p className="mt-6 text-xs text-slate-500">
+          Present: class start through 15 minutes after.
+          Late: from the 16th minute onward.
+          One record per faculty, date, and class schedule.
+        </p>
       </div>
     </main>
   );
