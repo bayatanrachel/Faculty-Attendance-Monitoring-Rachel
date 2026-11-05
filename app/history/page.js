@@ -174,10 +174,6 @@ function saveStatusChange() {
   }
 }
 
-return (
-  // Dito magsisimula ang existing JSX mo.
-);
-
   return (
     <main className="dashboard-page history-page">
       <aside className="sidebar">
