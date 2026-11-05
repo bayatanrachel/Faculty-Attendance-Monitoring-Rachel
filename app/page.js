@@ -6,8 +6,8 @@ import { useRouter } from "next/navigation";
 export default function Home() {
   const router = useRouter();
 
-  function handleLogin(event) {
-    event.preventDefault();
+  async function handleLogin(event) {
+event.preventDefault();
 
     const facultyId = event.target.facultyId.value.trim();
     const password = event.target.password.value.trim();
