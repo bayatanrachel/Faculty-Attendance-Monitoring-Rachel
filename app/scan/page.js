@@ -9,10 +9,16 @@ const FACULTY_ID = "FAC-001";
 const PERMANENT_QR_URL =
   "https://faculty-attendance-monitoring-rache-xi.vercel.app";
 
-const SCHEDULES = Array.from({ length: 17 }, (_, i) => {
-  const hour = i + 7;
-  return `${String(hour).padStart(2, "0")}:00`;
-});
+const SCHEDULES = [
+  "08:00",
+  "09:00",
+  "10:00",
+  "13:00",
+  "14:00",
+  "15:00",
+  "16:00",
+  "17:00",
+];
 
 function getRecords() {
   try {
