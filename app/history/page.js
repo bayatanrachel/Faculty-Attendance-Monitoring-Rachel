@@ -128,10 +128,55 @@ const [editMessage, setEditMessage] = useState("");
   }, [records, search, statusFilter, dateFilter]);
 
   function clearFilters() {
-    setSearch("");
-    setStatusFilter("All");
-    setDateFilter("");
+  setSearch("");
+  setStatusFilter("All");
+  setDateFilter("");
+}
+
+function openStatusEditor(record) {
+  setEditingRecord(record);
+  setEditStatus(getStatusLabel(record.status));
+  setExcuseReason(record.excuseReason || "");
+  setEditMessage("");
+}
+
+function saveStatusChange() {
+  if (!editingRecord) return;
+
+  if (editStatus === "Excused" && !excuseReason.trim()) {
+    setEditMessage("Please enter a reason for the excuse.");
+    return;
   }
+
+  const updatedRecords = records.map((record) => {
+    const isTarget = editingRecord.recordId
+      ? record.recordId === editingRecord.recordId
+      : record === editingRecord;
+
+    return isTarget
+      ? {
+          ...record,
+          status: editStatus,
+          excuseReason:
+            editStatus === "Excused" ? excuseReason.trim() : "",
+          statusUpdatedAt: new Date().toISOString(),
+        }
+      : record;
+  });
+
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedRecords));
+    setRecords(updatedRecords);
+    setEditingRecord(null);
+    setEditMessage("");
+  } catch {
+    setEditMessage("Unable to save changes. Please try again.");
+  }
+}
+
+return (
+  // Dito magsisimula ang existing JSX mo.
+);
 
   return (
     <main className="dashboard-page history-page">
