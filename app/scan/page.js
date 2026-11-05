@@ -29,6 +29,63 @@ function getRecords() {
   }
 }
 
+function getLocalDate(now) {
+  return [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, "0"),
+    String(now.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function markMissedClasses(now = new Date()) {
+  const saved = getRecords();
+  const date = getLocalDate(now);
+  const updated = [...saved];
+
+  SCHEDULES.forEach((schedule) => {
+    const [hour, minute] = schedule.split(":").map(Number);
+
+    const scheduledStart = new Date(now);
+    scheduledStart.setHours(hour, minute, 0, 0);
+
+    const absentCutoff = new Date(
+      scheduledStart.getTime() + 45 * 60 * 1000
+    );
+
+    if (now < absentCutoff) return;
+
+    const alreadyRecorded = updated.some(
+      (record) =>
+        record.date === date &&
+        record.classStart === schedule &&
+        (
+          record.facultyId === FACULTY_ID ||
+          (!record.facultyId &&
+            record.facultyName === FACULTY_NAME)
+        )
+    );
+
+    if (alreadyRecorded) return;
+
+    updated.unshift({
+      recordId:
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID().slice(0, 8)
+          : `${Date.now()}-${hour}`,
+      facultyName: FACULTY_NAME,
+      facultyId: FACULTY_ID,
+      date,
+      time: "--",
+      status: "Absent",
+      classStart: schedule,
+    });
+  });
+
+  localStorage.setItem(KEY, JSON.stringify(updated));
+
+  return updated;
+}
+
 function parseQR(raw) {
   try {
     const scannedURL = new URL(raw.trim());
@@ -105,70 +162,68 @@ export default function ScanPage() {
     const now = new Date();
     const hour = now.getHours();
 
-    if (hour < 7 || hour > 23) {
-      setError("There is no scheduled class at this time.");
-      return;
-    }
-
     const classStart = `${String(hour).padStart(2, "0")}:00`;
 
     if (!SCHEDULES.includes(classStart)) {
-      setError("No valid class schedule was found.");
+      setError("There is no scheduled class at this time.");
       return;
     }
 
     const scheduledStart = new Date(now);
     scheduledStart.setMinutes(0, 0, 0);
 
-    const cutoff = new Date(
+    const lateCutoff = new Date(
       scheduledStart.getTime() + 15 * 60 * 1000
     );
 
-    const date = [
-      now.getFullYear(),
-      String(now.getMonth() + 1).padStart(2, "0"),
-      String(now.getDate()).padStart(2, "0"),
-    ].join("-");
-
-    const saved = getRecords();
-
-    const duplicate = saved.some(
-      (record) =>
-        record.date === date &&
-        record.classStart === classStart &&
-        (record.facultyId === qr.facultyId ||
-          (!record.facultyId &&
-            record.facultyName === qr.facultyName))
+    const absentCutoff = new Date(
+      scheduledStart.getTime() + 45 * 60 * 1000
     );
 
-    if (duplicate) {
-      setError(
-        "Attendance has already been recorded for this schedule."
-      );
-      return;
-    }
+    const date = getLocalDate(now);
 
     busyRef.current = true;
 
-    const record = {
-      recordId:
-        typeof crypto !== "undefined" && crypto.randomUUID
-          ? crypto.randomUUID().slice(0, 8)
-          : `${Date.now()}`,
-      facultyName: qr.facultyName,
-      facultyId: qr.facultyId,
-      date,
-      time: now.toLocaleTimeString("en-US", {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-      status: now <= cutoff ? "Present" : "Late",
-      classStart,
-    };
-
-    const updated = [record, ...saved];
-
     try {
+      const saved = markMissedClasses(now);
+      setRecords(saved);
+
+      const duplicate = saved.some(
+        (record) =>
+          record.date === date &&
+          record.classStart === classStart &&
+          (
+            record.facultyId === qr.facultyId ||
+            (!record.facultyId &&
+              record.facultyName === qr.facultyName)
+          )
+      );
+
+      if (duplicate || now >= absentCutoff) {
+        setError(
+          "Attendance is already recorded or the 45-minute cutoff has passed."
+        );
+        return;
+      }
+
+      const record = {
+        recordId:
+          typeof crypto !== "undefined" && crypto.randomUUID
+            ? crypto.randomUUID().slice(0, 8)
+            : `${Date.now()}`,
+        facultyName: qr.facultyName,
+        facultyId: qr.facultyId,
+        date,
+        time: now.toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        status: now < lateCutoff ? "Present" : "Late",
+        classStart,
+      };
+
+      const updated = [record, ...saved];
+
       localStorage.setItem(KEY, JSON.stringify(updated));
       setRecords(updated);
       setLastRecord(record);
@@ -283,14 +338,29 @@ export default function ScanPage() {
   }
 
   useEffect(() => {
-    loadRecords();
+    const refresh = () => {
+      try {
+        const updated = markMissedClasses();
+        setRecords(updated);
+      } catch (refreshError) {
+        console.error("ATTENDANCE REFRESH ERROR:", refreshError);
+        loadRecords();
+      }
+    };
 
-    const refresh = () => loadRecords();
+    refresh();
+
+    const interval = setInterval(refresh, 30000);
 
     window.addEventListener("storage", refresh);
     window.addEventListener("focus", refresh);
 
     return () => {
+      clearInterval(interval);
+
+      window.removeEventListener("storage", refresh);
+      window.removeEventListener("focus", refresh);
+
       scanningRef.current = false;
 
       if (frameRef.current) {
@@ -620,8 +690,8 @@ export default function ScanPage() {
           <div className="footer-line" />
           <p>FACULTY ATTENDANCE MONITORING SYSTEM</p>
           <span>
-            Present: within 15 minutes after class starts. Late: from the
-            16th minute onward.
+            Present: within 14 minutes. Late: from the 15th to 44th minute.
+            Absent: after 45 minutes without a scan.
           </span>
         </footer>
       </div>
