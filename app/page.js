@@ -6,18 +6,42 @@ import { useRouter } from "next/navigation";
 export default function Home() {
   const router = useRouter();
 
-  async function handleLogin(event) {
-event.preventDefault();
+async function handleLogin(event) {
+  event.preventDefault();
 
-    const facultyId = event.target.facultyId.value.trim();
-    const password = event.target.password.value.trim();
+  const facultyId = event.target.facultyId.value.trim();
+  const password = event.target.password.value;
 
-    if (!facultyId || !password) {
+  if (!facultyId || !password) {
+    alert("Please enter your Faculty ID and password.");
+    return;
+  }
+
+  try {
+    const response = await fetch("/api/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        facultyId,
+        password,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      alert(result.error || "Login failed.");
       return;
     }
 
     router.push("/dashboard");
+  } catch {
+    alert("Unable to connect. Please try again.");
   }
+}
+  
 
   return (
     <main className="login-page">
