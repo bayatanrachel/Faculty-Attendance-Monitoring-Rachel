@@ -70,6 +70,10 @@ export default function AttendanceHistory() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [dateFilter, setDateFilter] = useState("");
+const [editingRecord, setEditingRecord] = useState(null);
+const [editStatus, setEditStatus] = useState("Absent");
+const [excuseReason, setExcuseReason] = useState("");
+const [editMessage, setEditMessage] = useState("");
 
   useEffect(() => {
     function loadRecords() {
