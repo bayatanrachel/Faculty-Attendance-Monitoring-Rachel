@@ -2,8 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
-const STORAGE_KEY = "faculty-attendance-records";
+import { useRouter } from "next/navigation";
 
 const statusLabels = {
   P: "Present",
@@ -47,29 +46,15 @@ function getDateKey(value) {
   if (!value) return "";
 
   const text = String(value).trim();
+  const match = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
 
-  // ISO date: YYYY-MM-DD
-  const isoMatch = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-  if (isoMatch) {
-    return `${isoMatch[1]}-${String(isoMatch[2]).padStart(2, "0")}-${String(
-      isoMatch[3]
+  if (match) {
+    return `${match[1]}-${String(match[2]).padStart(2, "0")}-${String(
+      match[3]
     ).padStart(2, "0")}`;
   }
 
-  // Common date: M/D/YYYY or MM/DD/YYYY
-  const usMatch = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-  if (usMatch) {
-    return `${usMatch[3]}-${String(usMatch[1]).padStart(2, "0")}-${String(
-      usMatch[2]
-    ).padStart(2, "0")}`;
-  }
-
-  const parsed = new Date(text);
-  if (Number.isNaN(parsed.getTime())) return "";
-
-  return `${parsed.getFullYear()}-${String(
-    parsed.getMonth() + 1
-  ).padStart(2, "0")}-${String(parsed.getDate()).padStart(2, "0")}`;
+  return "";
 }
 
 function getLocalDateKey(date) {
@@ -79,32 +64,80 @@ function getLocalDateKey(date) {
   )}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
+function mapDatabaseRecord(row) {
+  return {
+    recordId: row.record_id,
+    facultyName: row.faculty_name,
+    date: row.date,
+    time: row.time,
+    status: row.status,
+  };
+}
+
 export default function Dashboard() {
+  const router = useRouter();
+
   const [records, setRecords] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    function loadRecords() {
-      try {
-        const saved = JSON.parse(
-          localStorage.getItem(STORAGE_KEY) || "[]"
-        );
+    let active = true;
 
-        setRecords(Array.isArray(saved) ? saved : []);
-      } catch {
-        setRecords([]);
+    async function loadRecords() {
+      try {
+        const response = await fetch("/api/attendance", {
+          method: "GET",
+          cache: "no-store",
+        });
+
+        if (response.status === 401) {
+          router.replace("/");
+          return;
+        }
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            result.error || "Unable to load attendance records."
+          );
+        }
+
+        if (active) {
+          const databaseRecords = Array.isArray(result.records)
+            ? result.records.map(mapDatabaseRecord)
+            : [];
+
+          setRecords(databaseRecords);
+          setErrorMessage("");
+        }
+      } catch (error) {
+        if (active) {
+          setErrorMessage(
+            error.message || "Unable to connect to the attendance database."
+          );
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
       }
     }
 
     loadRecords();
 
-    window.addEventListener("storage", loadRecords);
-    window.addEventListener("focus", loadRecords);
+    function handleFocus() {
+      loadRecords();
+    }
+
+    window.addEventListener("focus", handleFocus);
 
     return () => {
-      window.removeEventListener("storage", loadRecords);
-      window.removeEventListener("focus", loadRecords);
+      active = false;
+      window.removeEventListener("focus", handleFocus);
     };
-  }, []);
+  }, [router]);
 
   const stats = attendanceStats.map((stat) => ({
     ...stat,
@@ -113,9 +146,18 @@ export default function Dashboard() {
     ).length,
   }));
 
-  const recentRecords = [...records].reverse().slice(0, 5);
+  const recentRecords = [...records]
+    .sort((a, b) => {
+      const dateComparison = String(b.date).localeCompare(String(a.date));
+
+      if (dateComparison !== 0) return dateComparison;
+
+      return String(b.time).localeCompare(String(a.time));
+    })
+    .slice(0, 5);
 
   const today = new Date();
+
   const formattedDate = today.toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",
@@ -129,12 +171,15 @@ export default function Dashboard() {
     date.setDate(date.getDate() - (6 - index));
 
     const key = getLocalDateKey(date);
+
     const count = records.filter(
       (record) => getDateKey(record.date) === key
     ).length;
 
     return {
-      label: date.toLocaleDateString("en-US", { weekday: "short" }),
+      label: date.toLocaleDateString("en-US", {
+        weekday: "short",
+      }),
       count,
       key,
     };
@@ -199,7 +244,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <a className="logout-link" href="/">
+          <a className="logout-link" href="/api/logout">
             <span className="nav-icon">↪</span>
             <span>Log Out</span>
           </a>
@@ -223,6 +268,19 @@ export default function Dashboard() {
         </header>
 
         <div className="dashboard-main">
+          {errorMessage && (
+            <p
+              role="alert"
+              style={{
+                color: "#ff8b8b",
+                padding: "12px",
+                marginBottom: "16px",
+              }}
+            >
+              {errorMessage}
+            </p>
+          )}
+
           <section className="welcome-banner">
             <div className="welcome-content">
               <span className="welcome-label">WELCOME BACK</span>
@@ -266,7 +324,7 @@ export default function Dashboard() {
               <div className="record-count">
                 <span className="record-count-icon">▤</span>
                 <span>
-                  <strong>{records.length}</strong>
+                  <strong>{loading ? "..." : records.length}</strong>
                   <small>Total Records</small>
                 </span>
               </div>
@@ -287,7 +345,7 @@ export default function Dashboard() {
                     <span className="stat-decoration">{stat.icon}</span>
                   </div>
 
-                  <h3>{stat.value}</h3>
+                  <h3>{loading ? "..." : stat.value}</h3>
                   <p className="stat-note">{stat.note}</p>
 
                   <div className="stat-progress">
@@ -335,7 +393,10 @@ export default function Dashboard() {
                         height: `${
                           day.count === 0
                             ? 5
-                            : Math.max(12, (day.count / maxActivity) * 100)
+                            : Math.max(
+                                12,
+                                (day.count / maxActivity) * 100
+                              )
                         }%`,
                         animationDelay: `${index * 90}ms`,
                       }}
@@ -374,7 +435,15 @@ export default function Dashboard() {
                 </thead>
 
                 <tbody>
-                  {recentRecords.length === 0 ? (
+                  {loading ? (
+                    <tr>
+                      <td colSpan="4">
+                        <div className="empty-records">
+                          <strong>Loading attendance records...</strong>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : recentRecords.length === 0 ? (
                     <tr>
                       <td colSpan="4">
                         <div className="empty-records">
@@ -401,7 +470,7 @@ export default function Dashboard() {
 
                       return (
                         <tr
-                          key={record.recordId || record.id || index}
+                          key={record.recordId || index}
                           className="record-row"
                         >
                           <td>
