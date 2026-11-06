@@ -17,7 +17,7 @@ export async function GET() {
     }
 
     const { data, error } = await supabaseAdmin
-      .from("attendance")
+      .from("Attendance")
       .select("*")
       .order("date", { ascending: false });
 
@@ -72,7 +72,7 @@ export async function POST(request) {
     }
 
     const { data, error } = await supabaseAdmin
-      .from("attendance")
+      .from("Attendance")
       .insert([
         {
           record_id,
