@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import LogoutButton from "@/components/LogoutButton";
 
 const statusStyles = {
   Present: {
@@ -192,9 +193,7 @@ export default function AttendanceHistory() {
           </a>
         </nav>
 
-        <a className="logout-link" href="/api/logout">
-          Log Out
-        </a>
+        <LogoutButton />
       </aside>
 
       <section className="dashboard-content history-content">
