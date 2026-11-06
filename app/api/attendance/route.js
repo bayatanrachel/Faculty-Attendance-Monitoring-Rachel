@@ -73,19 +73,24 @@ export async function POST(request) {
 
     const { data, error } = await supabaseAdmin
       .from("Attendance")
-      .insert([
-        {
-          record_id,
-          faculty_name,
-          date,
-          time,
-          status,
-        },
-      ])
+      .insert({
+        record_id,
+        faculty_name,
+        date,
+        time,
+        status,
+      })
       .select()
       .single();
 
     if (error) {
+      if (error.code === "23505") {
+        return NextResponse.json(
+          { error: "Attendance record already exists." },
+          { status: 409 }
+        );
+      }
+
       return NextResponse.json(
         { error: error.message },
         { status: 500 }
