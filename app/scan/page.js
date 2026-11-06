@@ -1,6 +1,8 @@
+
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import LogoutButton from "@/components/LogoutButton";
 
 const FACULTY_NAME = "Sherilyn Tobias";
 const FACULTY_ID = "FAC-001";
@@ -368,9 +370,13 @@ export default function ScanPage() {
   return (
     <main className="scanner-page">
       <div className="scanner-container">
-        <a href="/dashboard" className="back-link">
-          <span>←</span> Back to Dashboard
-        </a>
+        <div className="scanner-top-actions">
+          <a href="/dashboard" className="back-link">
+            <span>←</span> Back to Dashboard
+          </a>
+
+          <LogoutButton />
+        </div>
 
         <header className="page-header">
           <div className="header-icon">⌗</div>
@@ -735,6 +741,14 @@ export default function ScanPage() {
         .scanner-container {
           max-width: 1160px;
           margin: 0 auto;
+        }
+
+        .scanner-top-actions {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          flex-wrap: wrap;
         }
 
         .back-link {
@@ -1729,4 +1743,4 @@ export default function ScanPage() {
       `}</style>
     </main>
   );
-          }
+}
