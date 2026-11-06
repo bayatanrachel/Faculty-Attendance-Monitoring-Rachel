@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import LogoutButton from "@/components/LogoutButton";
 
 const statusLabels = {
   P: "Present",
@@ -244,10 +245,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <a className="logout-link" href="/api/logout">
-            <span className="nav-icon">↪</span>
-            <span>Log Out</span>
-          </a>
+          <LogoutButton />
         </div>
       </aside>
 
@@ -509,3 +507,4 @@ export default function Dashboard() {
     </main>
   );
 }
+
