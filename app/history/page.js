@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import LogoutButton from "@/components/LogoutButton";
+import LogoutButton from "@/app/components/LogoutButton";
 
 const statusStyles = {
   Present: {
