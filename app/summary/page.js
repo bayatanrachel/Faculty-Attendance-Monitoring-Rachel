@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import LogoutButton from "@/components/LogoutButton";
 
 const summaryItems = [
   { label: "Present", color: "#34D399", light: "#6EE7B7" },
@@ -290,9 +291,7 @@ export default function AttendanceSummary() {
           </a>
         </nav>
 
-        <a className="logout-link" href="/">
-          Log Out
-        </a>
+        <LogoutButton />
       </aside>
 
       <section className="dashboard-content summary-content">
