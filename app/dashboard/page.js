@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import LogoutButton from "@/app/components/LogoutButton";
+import LogoutButton from "../components/LogoutButton";
 
 const statusLabels = {
   P: "Present",
