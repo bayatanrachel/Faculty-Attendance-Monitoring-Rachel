@@ -1,11 +1,10 @@
 
 import { NextResponse } from "next/server";
-import { verifySession } from "@/lib/auth";
 
-export async function middleware(request) {
-  const isLoggedIn = await verifySession();
+export function middleware(request) {
+  const session = request.cookies.get("faculty_session")?.value;
 
-  if (!isLoggedIn) {
+  if (!session) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
@@ -20,4 +19,3 @@ export const config = {
     "/scan/:path*",
   ],
 };
-
