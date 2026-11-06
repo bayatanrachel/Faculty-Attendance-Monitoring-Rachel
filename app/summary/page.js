@@ -3,8 +3,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-const STORAGE_KEY = "faculty-attendance-records";
-
 const summaryItems = [
   { label: "Present", color: "#34D399", light: "#6EE7B7" },
   { label: "Late", color: "#FBBF24", light: "#FCD34D" },
@@ -98,27 +96,65 @@ export default function AttendanceSummary() {
   const [period, setPeriod] = useState("all");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    function loadRecords() {
-      try {
-        const saved = JSON.parse(
-          localStorage.getItem(STORAGE_KEY) || "[]"
-        );
+    let active = true;
 
-        setRecords(Array.isArray(saved) ? saved : []);
-      } catch {
-        setRecords([]);
+    async function loadRecords() {
+      try {
+        const response = await fetch("/api/attendance", {
+          method: "GET",
+          cache: "no-store",
+        });
+
+        if (response.status === 401) {
+          window.location.replace("/");
+          return;
+        }
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            result.error || "Unable to load attendance records."
+          );
+        }
+
+        if (active) {
+          const databaseRecords = Array.isArray(result.records)
+            ? result.records.map((row) => ({
+                recordId: row.record_id,
+                facultyName: row.faculty_name,
+                date: row.date,
+                time: row.time,
+                status: row.status,
+              }))
+            : [];
+
+          setRecords(databaseRecords);
+          setErrorMessage("");
+        }
+      } catch (error) {
+        if (active) {
+          setErrorMessage(
+            error.message || "Unable to load attendance records."
+          );
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
       }
     }
 
     loadRecords();
 
-    window.addEventListener("storage", loadRecords);
     window.addEventListener("focus", loadRecords);
 
     return () => {
-      window.removeEventListener("storage", loadRecords);
+      active = false;
       window.removeEventListener("focus", loadRecords);
     };
   }, []);
@@ -271,6 +307,21 @@ export default function AttendanceSummary() {
 
           <div className="faculty-avatar">ST</div>
         </header>
+
+        {loading && (
+          <p style={{ color: "#9bd8fa", marginBottom: "20px" }}>
+            Loading attendance summary...
+          </p>
+        )}
+
+        {errorMessage && (
+          <p
+            role="alert"
+            style={{ color: "#ff929c", marginBottom: "20px" }}
+          >
+            {errorMessage}
+          </p>
+        )}
 
         <section className="report-information">
           <div className="report-heading">
