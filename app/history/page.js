@@ -3,8 +3,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-const STORAGE_KEY = "faculty-attendance-records";
-
 const statusStyles = {
   Present: {
     color: "#6ee7b7",
@@ -70,31 +68,65 @@ export default function AttendanceHistory() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [dateFilter, setDateFilter] = useState("");
-const [editingRecord, setEditingRecord] = useState(null);
-const [editStatus, setEditStatus] = useState("Absent");
-const [excuseReason, setExcuseReason] = useState("");
-const [editMessage, setEditMessage] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    function loadRecords() {
-      try {
-        const saved = JSON.parse(
-          localStorage.getItem(STORAGE_KEY) || "[]"
-        );
+    let active = true;
 
-        setRecords(Array.isArray(saved) ? saved : []);
-      } catch {
-        setRecords([]);
+    async function loadRecords() {
+      try {
+        const response = await fetch("/api/attendance", {
+          method: "GET",
+          cache: "no-store",
+        });
+
+        if (response.status === 401) {
+          window.location.replace("/");
+          return;
+        }
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            result.error || "Unable to load attendance records."
+          );
+        }
+
+        if (active) {
+          const databaseRecords = Array.isArray(result.records)
+            ? result.records.map((row) => ({
+                recordId: row.record_id,
+                facultyName: row.faculty_name,
+                date: row.date,
+                time: row.time,
+                status: row.status,
+              }))
+            : [];
+
+          setRecords(databaseRecords);
+          setErrorMessage("");
+        }
+      } catch (error) {
+        if (active) {
+          setErrorMessage(
+            error.message || "Unable to load attendance records."
+          );
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
       }
     }
 
     loadRecords();
 
-    window.addEventListener("storage", loadRecords);
     window.addEventListener("focus", loadRecords);
 
     return () => {
-      window.removeEventListener("storage", loadRecords);
+      active = false;
       window.removeEventListener("focus", loadRecords);
     };
   }, []);
@@ -128,51 +160,10 @@ const [editMessage, setEditMessage] = useState("");
   }, [records, search, statusFilter, dateFilter]);
 
   function clearFilters() {
-  setSearch("");
-  setStatusFilter("All");
-  setDateFilter("");
-}
-
-function openStatusEditor(record) {
-  setEditingRecord(record);
-  setEditStatus(getStatusLabel(record.status));
-  setExcuseReason(record.excuseReason || "");
-  setEditMessage("");
-}
-
-function saveStatusChange() {
-  if (!editingRecord) return;
-
-  if (editStatus === "Excused" && !excuseReason.trim()) {
-    setEditMessage("Please enter a reason for the excuse.");
-    return;
+    setSearch("");
+    setStatusFilter("All");
+    setDateFilter("");
   }
-
-  const updatedRecords = records.map((record) => {
-    const isTarget = editingRecord.recordId
-      ? record.recordId === editingRecord.recordId
-      : record === editingRecord;
-
-    return isTarget
-      ? {
-          ...record,
-          status: editStatus,
-          excuseReason:
-            editStatus === "Excused" ? excuseReason.trim() : "",
-          statusUpdatedAt: new Date().toISOString(),
-        }
-      : record;
-  });
-
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedRecords));
-    setRecords(updatedRecords);
-    setEditingRecord(null);
-    setEditMessage("");
-  } catch {
-    setEditMessage("Unable to save changes. Please try again.");
-  }
-}
 
   return (
     <main className="dashboard-page history-page">
@@ -201,7 +192,7 @@ function saveStatusChange() {
           </a>
         </nav>
 
-        <a className="logout-link" href="/">
+        <a className="logout-link" href="/api/logout">
           Log Out
         </a>
       </aside>
@@ -220,6 +211,14 @@ function saveStatusChange() {
         </header>
 
         <section className="history-section">
+          {loading && <p>Loading attendance records...</p>}
+
+          {errorMessage && (
+            <p role="alert" style={{ color: "#ff929c" }}>
+              {errorMessage}
+            </p>
+          )}
+
           <div className="history-title-row">
             <div>
               <h2>Attendance Records</h2>
@@ -282,7 +281,15 @@ function saveStatusChange() {
               </thead>
 
               <tbody>
-                {filteredRecords.length === 0 ? (
+                {loading ? (
+                  <tr>
+                    <td colSpan="5">
+                      <div className="history-empty-state">
+                        <strong>Loading attendance records...</strong>
+                      </div>
+                    </td>
+                  </tr>
+                ) : filteredRecords.length === 0 ? (
                   <tr>
                     <td colSpan="5">
                       <div className="history-empty-state">
@@ -303,15 +310,20 @@ function saveStatusChange() {
                 ) : (
                   filteredRecords.map((record, index) => {
                     const status = getStatusLabel(record.status);
-                    const badgeStyle =
-                      statusStyles[status] || {
-                        color: "#cbd5e1",
-                        background: "rgba(148,163,184,.12)",
-                        border: "1px solid #40516a",
-                      };
+
+                    const badgeStyle = statusStyles[status] || {
+                      color: "#cbd5e1",
+                      background: "rgba(148,163,184,.12)",
+                      border: "1px solid #40516a",
+                    };
 
                     return (
-                      <tr key={record.recordId || `${record.date}-${record.time}-${index}`}>
+                      <tr
+                        key={
+                          record.recordId ||
+                          `${record.date}-${record.time}-${index}`
+                        }
+                      >
                         <td className="record-id">
                           {record.recordId || "—"}
                         </td>
