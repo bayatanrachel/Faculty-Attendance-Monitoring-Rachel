@@ -1,13 +1,7 @@
 
 import { NextResponse } from "next/server";
 
-export default function middleware(request) {
-  const session = request.cookies.get("faculty_session")?.value;
-
-  if (!session) {
-    return NextResponse.redirect(new URL("/", request.url));
-  }
-
+export function middleware(request) {
   return NextResponse.next();
 }
 
