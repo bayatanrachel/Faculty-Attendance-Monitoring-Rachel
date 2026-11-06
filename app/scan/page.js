@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import LogoutButton from "@/app/components/LogoutButton";
+import LogoutButton from "../components/LogoutButton";
 
 const FACULTY_NAME = "Sherilyn Tobias";
 const FACULTY_ID = "FAC-001";
